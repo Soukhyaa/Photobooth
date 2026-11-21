@@ -1,0 +1,105 @@
+/* Vintage Photo Booth - Core Design System & Theme */
+
+:root {
+  /* Warm Cream & Vanilla Palette (Dominates the environment) */
+  --color-cream-light: #fdfaf2;
+  --color-cream-bg: #f6eedb;
+  --color-cream-mid: #ede1c8;
+  --color-cream-dark: #dcceb0;
+  --color-cream-border: #d0c0a0;
+
+  /* Signature Deep Cherry / Burgundy (Signature booth color) */
+  --color-cherry-darkest: #380811;
+  --color-cherry-deep: #520c1a;
+  --color-cherry-main: #6f1224;
+  --color-cherry-accent: #8b1930;
+  --color-cherry-light: #a9243d;
+
+  /* Mustard Yellow (Cheerful retro warmth & marquee highlights) */
+  --color-mustard-deep: #b8770d;
+  --color-mustard-main: #df981c;
+  --color-mustard-bright: #fab839;
+  --color-mustard-glow: #fed36b;
+
+  /* Subtle Chrome & Metallic Hardware */
+  --color-chrome-highlight: #ffffff;
+  --color-chrome-bright: #e8ecf1;
+  --color-chrome-mid: #bfc8d2;
+  --color-chrome-shadow: #7e8b98;
+  --chrome-gradient: linear-gradient(
+    135deg,
+    #ffffff 0%,
+    #d8e0e7 25%,
+    #98a6b3 50%,
+    #eef2f5 75%,
+    #b0bcc7 100%
+  );
+  --chrome-rim-gradient: linear-gradient(
+    90deg,
+    #9aa7b4 0%,
+    #ffffff 20%,
+    #c4ced7 50%,
+    #8291a0 85%,
+    #e0e7ed 100%
+  );
+
+  /* Booth Interior Wood & Shadows */
+  --color-wood-dark: #20100c;
+  --color-wood-mid: #381c14;
+  --color-charcoal: #1a1716;
+
+  /* Paper & Strip Tone */
+  --color-paper-white: #faf7f0;
+  --color-paper-grain: #f2ede0;
+
+  /* Typography */
+  --font-marquee-slab: 'Alfa Slab One', 'Arial Black', Impact, cursive;
+  --font-marquee-bebas: 'Bebas Neue', 'Impact', sans-serif;
+  --font-typewriter: 'Special Elite', 'Courier New', Courier, monospace;
+  --font-ui: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* Physical Shadows */
+  --shadow-booth-ground: 0 35px 65px -15px rgba(56, 8, 17, 0.35), 0 15px 30px -5px rgba(0, 0, 0, 0.2);
+  --shadow-marquee-glow: 0 0 20px rgba(250, 184, 57, 0.45), 0 0 45px rgba(223, 152, 28, 0.25);
+  --shadow-chrome-bevel: inset 1px 1px 1px rgba(255, 255, 255, 0.8), inset -1px -1px 2px rgba(0, 0, 0, 0.4);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  min-height: 100%;
+  background-color: var(--color-cream-bg);
+  color: var(--color-cherry-darkest);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* Subtle Film Grain Texture Overlay across whole app */
+.film-grain-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.038;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+
+/* Base interactive button reset */
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+button:focus-visible {
+  outline: 2px solid var(--color-mustard-main);
+  outline-offset: 3px;
+}
