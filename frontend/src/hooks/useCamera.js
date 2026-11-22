@@ -28,17 +28,29 @@ export function useCamera() {
   // Stop current active stream
   const stopStream = useCallback(() => {
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current.getTracks().forEach((track) => {
+        try {
+          track.stop();
+        } catch {}
+      });
       streamRef.current = null;
     }
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
+    setCameraStatus('idle');
   }, []);
 
   // Start live webcam stream
   const startCamera = useCallback(async (mode = facingMode) => {
     stopStream();
+
+    // Do not start camera if document/tab is currently hidden
+    if (typeof document !== 'undefined' && document.hidden) {
+      setCameraStatus('idle');
+      return;
+    }
+
     setCameraStatus('requesting');
     setErrorMessage('');
 
@@ -59,6 +71,18 @@ export function useCamera() {
       };
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+      // Race condition check: Did tab become hidden while waiting for getUserMedia?
+      if (typeof document !== 'undefined' && document.hidden) {
+        stream.getTracks().forEach((track) => {
+          try {
+            track.stop();
+          } catch {}
+        });
+        setCameraStatus('idle');
+        return;
+      }
+
       streamRef.current = stream;
 
       if (videoRef.current) {

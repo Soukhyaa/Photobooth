@@ -1,13 +1,18 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   composeBasePhotoStrip,
-  renderFinalPhotoStrip,
+  composeLivePhotoStripVideo,
+  renderFinalPhotoStripCanvas,
   triggerBrowserDownload,
   getFormattedVintageDate,
   STRIP_DESIGNS,
-  STRIP_WIDTH_PRESETS
+  STRIP_WIDTH_PRESETS,
+  SOLID_COLOR_PALETTE
 } from '../utils/stripComposer';
-import { triggerVideoDownload } from '../utils/liveRecorder';
+import {
+  triggerVideoDownload,
+  getVideoFileExtension
+} from '../utils/liveRecorder';
 import { soundEngine } from '../utils/audio';
 
 export default function PhotoStripPreview({
@@ -16,164 +21,238 @@ export default function PhotoStripPreview({
   captureMode = 'still',
   selectedFilter = {},
   onRetake,
-  initialBaseStripUrl = null,
+  baseStripUrl = null,
+  isRecomposingStrip = false,
   selectedDesignId = 'classic_cream',
+  selectedSolidColorId = 'black',
   selectedWidthId = 'wide',
   onDesignChange,
+  onSolidColorChange,
   onWidthChange
 }) {
-  const [currentDesignId, setCurrentDesignId] = useState(selectedDesignId);
-  const [currentWidthId, setCurrentWidthId] = useState(selectedWidthId);
-  const [baseStripUrl, setBaseStripUrl] = useState(initialBaseStripUrl || null);
-  const [isComposingBase, setIsComposingBase] = useState(!initialBaseStripUrl);
   const [caption, setCaption] = useState('MEMORIES IN THE BOOTH');
   const [downloadNotice, setDownloadNotice] = useState('');
   const [activePlayingPhotoId, setActivePlayingPhotoId] = useState(null);
+  const [isGeneratingVideoStrip, setIsGeneratingVideoStrip] = useState(false);
+  const [videoProgressText, setVideoProgressText] = useState('');
 
-  const baseCanvasRef = useRef(null);
-  const hasComposedRef = useRef(false);
+  const isComposingBase = isRecomposingStrip || !baseStripUrl;
 
-  // Sync with parent props if changed externally
+  // Fallback: If baseStripUrl was not yet created when entering preview, request composition from parent
   useEffect(() => {
-    if (selectedDesignId && selectedDesignId !== currentDesignId) {
-      setCurrentDesignId(selectedDesignId);
+    if (!baseStripUrl && capturedPhotos && capturedPhotos.length > 0) {
+      if (onDesignChange) {
+        onDesignChange(selectedDesignId);
+      }
     }
-  }, [selectedDesignId, currentDesignId]);
+  }, [baseStripUrl, capturedPhotos, selectedDesignId, onDesignChange]);
 
-  useEffect(() => {
-    if (selectedWidthId && selectedWidthId !== currentWidthId) {
-      setCurrentWidthId(selectedWidthId);
-    }
-  }, [selectedWidthId, currentWidthId]);
-
-  // 1. Compose the 4-photo base strip once on mount if not already present
-  // The 4 photographs, borders, and grain remain completely stationary
-  // while the user edits or deletes caption text in real time.
-  useEffect(() => {
-    if (hasComposedRef.current) return;
-    hasComposedRef.current = true;
-
-    let isMounted = true;
-    if (!baseStripUrl) {
-      setIsComposingBase(true);
-    }
-
-    composeBasePhotoStrip(capturedPhotos, {
-      designId: currentDesignId,
-      widthId: currentWidthId,
-      dateText: getFormattedVintageDate()
-    })
-      .then((canvas) => {
-        if (!isMounted) return;
-        baseCanvasRef.current = canvas;
-        if (!baseStripUrl) {
-          setBaseStripUrl(canvas.toDataURL('image/png'));
-        }
-        setIsComposingBase(false);
-      })
-      .catch((err) => {
-        console.error('Error composing base photo strip:', err);
-        if (isMounted) setIsComposingBase(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [capturedPhotos, baseStripUrl, currentDesignId, currentWidthId]);
-
-  // Switch Design Preset
+  // Switch Design Preset via single authoritative parent handler
   const handleDesignSwitch = (designId) => {
-    if (designId === currentDesignId || capturedPhotos.length === 0) return;
-    soundEngine.playLeverClick();
-    setCurrentDesignId(designId);
-    if (onDesignChange) onDesignChange(designId);
-
-    composeBasePhotoStrip(capturedPhotos, {
-      designId,
-      widthId: currentWidthId,
-      dateText: getFormattedVintageDate()
-    })
-      .then((canvas) => {
-        baseCanvasRef.current = canvas;
-        setBaseStripUrl(canvas.toDataURL('image/png'));
-      })
-      .catch((err) => console.error('Error switching design:', err));
+    soundEngine.playLeverClick?.();
+    if (onDesignChange) {
+      onDesignChange(designId);
+    }
   };
 
-  // Switch Width Format (Classic Wide vs Slim Strip)
-  const handleWidthSwitch = (widthId) => {
-    if (widthId === currentWidthId || capturedPhotos.length === 0) return;
-    soundEngine.playLeverClick();
-    setCurrentWidthId(widthId);
-    if (onWidthChange) onWidthChange(widthId);
+  // Switch Solid Color Preset (in Solid Colours theme) via single authoritative parent handler
+  const handleSolidColorSwitch = (colorId) => {
+    soundEngine.playLeverClick?.();
+    if (onSolidColorChange) {
+      onSolidColorChange(colorId);
+    }
+  };
 
-    composeBasePhotoStrip(capturedPhotos, {
-      designId: currentDesignId,
-      widthId,
-      dateText: getFormattedVintageDate()
-    })
-      .then((canvas) => {
-        baseCanvasRef.current = canvas;
-        setBaseStripUrl(canvas.toDataURL('image/png'));
-      })
-      .catch((err) => console.error('Error switching width:', err));
+  // Switch Width Format (Classic Wide vs Slim Strip) via single authoritative parent handler
+  const handleWidthSwitch = (widthId) => {
+    soundEngine.playLeverClick?.();
+    if (onWidthChange) {
+      onWidthChange(widthId);
+    }
   };
 
   // 2. Download Composed Photo Strip (Pure Still Photograph Print with Selected Design)
-  const handleDownloadStrip = () => {
-    if (!baseCanvasRef.current) return;
+  const handleDownloadStrip = async () => {
     soundEngine.playTrayDrop();
 
-    // Render final strip synchronously with latest caption and selected design in ~2ms
-    const finalStripUrl = renderFinalPhotoStrip(baseCanvasRef.current, caption, {
-      designId: currentDesignId,
-      widthId: currentWidthId
-    });
-    triggerBrowserDownload(finalStripUrl, `vintage-booth-strip-${currentDesignId}-${currentWidthId}.png`);
+    try {
+      setDownloadNotice('Composing photo strip for download...');
+      const canvas = await composeBasePhotoStrip(capturedPhotos, {
+        designId: selectedDesignId,
+        solidColorId: selectedSolidColorId,
+        widthId: selectedWidthId,
+        dateText: getFormattedVintageDate()
+      });
 
-    const widthInfo = STRIP_WIDTH_PRESETS[currentWidthId]?.sub || '600 × 1800 px';
-    setDownloadNotice(`✓ Photo strip downloaded (${widthInfo})!`);
-    setTimeout(() => setDownloadNotice(''), 3500);
+      const finalCanvas = renderFinalPhotoStripCanvas(canvas, caption, {
+        designId: selectedDesignId,
+        solidColorId: selectedSolidColorId,
+        widthId: selectedWidthId
+      });
+
+      if (!finalCanvas) {
+        throw new Error('Failed to generate final photo strip canvas');
+      }
+
+      const designSlug = selectedDesignId === 'solid_colors' ? `solid-${selectedSolidColorId}` : selectedDesignId;
+      const filename = `vintage-booth-strip-${designSlug}-${selectedWidthId}.png`;
+      triggerBrowserDownload(finalCanvas, filename);
+
+      const widthInfo = STRIP_WIDTH_PRESETS[selectedWidthId]?.sub || '600 × 1800 px';
+      setDownloadNotice(`✓ Downloaded ${filename} (${widthInfo})!`);
+      setTimeout(() => setDownloadNotice(''), 3500);
+    } catch (err) {
+      console.error('Error downloading photo strip:', err);
+      setDownloadNotice('⚠️ Download error. Please try again.');
+      setTimeout(() => setDownloadNotice(''), 3500);
+    }
   };
 
   // 3. Download Single Individual Photo (1 to 4)
   const handleDownloadSinglePhoto = (photo, index) => {
     soundEngine.playTrayDrop();
-    triggerBrowserDownload(photo.dataUrl, `vintage-booth-photo-${index + 1}.png`);
-    setDownloadNotice(`✓ Downloaded Photo ${index + 1}!`);
+    const filename = `vintage-booth-photo-${index + 1}.png`;
+    triggerBrowserDownload(photo.dataUrl, filename);
+    setDownloadNotice(`✓ Downloaded Photo ${index + 1} (${filename})!`);
     setTimeout(() => setDownloadNotice(''), 3000);
   };
 
   // 4. Download All 4 Individual Photos sequentially
   const handleDownloadAllIndividual = () => {
     soundEngine.playTrayDrop();
+    setDownloadNotice('✓ Downloading all 4 individual photos...');
     capturedPhotos.forEach((photo, idx) => {
       setTimeout(() => {
-        triggerBrowserDownload(photo.dataUrl, `vintage-booth-photo-${idx + 1}.png`);
+        const filename = `vintage-booth-photo-${idx + 1}.png`;
+        triggerBrowserDownload(photo.dataUrl, filename);
       }, idx * 250);
     });
-    setDownloadNotice('✓ Downloading all 4 individual photos...');
-    setTimeout(() => setDownloadNotice(''), 3500);
+    setTimeout(() => setDownloadNotice('✓ All 4 individual photos downloaded!'), 4 * 250 + 600);
   };
 
-  // 5. Download Single Live Photo Clip
-  const handleDownloadLiveClip = (clip) => {
+  // 5. Download Animated Live Photo Strip Video (Choice A)
+  const handleDownloadLiveStrip = async () => {
+    if (isGeneratingVideoStrip) return;
+    soundEngine.playPrintingGear();
+    setIsGeneratingVideoStrip(true);
+    setVideoProgressText('Developing Live Photo Strip Video... (0%)');
+    setDownloadNotice('🎞️ Developing Live Photo Strip Video (MP4/WebM)...');
+
+    try {
+      const result = await composeLivePhotoStripVideo(capturedPhotos, liveClips, {
+        designId: selectedDesignId,
+        solidColorId: selectedSolidColorId,
+        widthId: selectedWidthId,
+        caption,
+        dateText: getFormattedVintageDate(),
+        onProgress: (pct) => {
+          setVideoProgressText(`Developing Video Strip... (${pct}%)`);
+        }
+      });
+
+      triggerVideoDownload(result.blob, result.filename);
+      soundEngine.playTrayDrop();
+      setDownloadNotice(`✓ Downloaded Live Photo Strip (${result.filename})!`);
+      setTimeout(() => setDownloadNotice(''), 4000);
+    } catch (err) {
+      console.error('Error generating Live Photo Strip video:', err);
+      setDownloadNotice('⚠️ Video export error. Please try again.');
+      setTimeout(() => setDownloadNotice(''), 4000);
+    } finally {
+      setIsGeneratingVideoStrip(false);
+      setVideoProgressText('');
+    }
+  };
+
+  // 6. Download Both Animated Video Strip and Static PNG Strip (Choice C)
+  const handleDownloadBothStrips = async () => {
+    if (isGeneratingVideoStrip) return;
+    soundEngine.playPrintingGear();
+    setIsGeneratingVideoStrip(true);
+    setVideoProgressText('Developing Both Formats... (0%)');
+    setDownloadNotice('✨ Developing Live Photo Strip Video & Composing Still PNG...');
+
+    try {
+      // Step 1: Generate & download Live Video Strip
+      const result = await composeLivePhotoStripVideo(capturedPhotos, liveClips, {
+        designId: selectedDesignId,
+        solidColorId: selectedSolidColorId,
+        widthId: selectedWidthId,
+        caption,
+        dateText: getFormattedVintageDate(),
+        onProgress: (pct) => {
+          setVideoProgressText(`Developing Video... (${pct}%)`);
+        }
+      });
+      triggerVideoDownload(result.blob, result.filename);
+
+      // Step 2: Generate & download Static PNG Strip after 500ms
+      setTimeout(async () => {
+        try {
+          const canvas = await composeBasePhotoStrip(capturedPhotos, {
+            designId: selectedDesignId,
+            solidColorId: selectedSolidColorId,
+            widthId: selectedWidthId,
+            dateText: getFormattedVintageDate()
+          });
+          const finalCanvas = renderFinalPhotoStripCanvas(canvas, caption, {
+            designId: selectedDesignId,
+            solidColorId: selectedSolidColorId,
+            widthId: selectedWidthId
+          });
+          const designSlug = selectedDesignId === 'solid_colors' ? `solid-${selectedSolidColorId}` : selectedDesignId;
+          const pngFilename = `vintage-booth-strip-${designSlug}-${selectedWidthId}.png`;
+          triggerBrowserDownload(finalCanvas, pngFilename);
+          soundEngine.playTrayDrop();
+          setDownloadNotice(`✓ Downloaded Both: ${result.filename} & ${pngFilename}!`);
+          setTimeout(() => setDownloadNotice(''), 4500);
+        } catch (pngErr) {
+          console.error('Error in secondary PNG download for Get Both:', pngErr);
+        }
+      }, 500);
+    } catch (err) {
+      console.error('Error generating Get Both download:', err);
+      setDownloadNotice('⚠️ Error exporting Live strip. Please try again.');
+      setTimeout(() => setDownloadNotice(''), 4000);
+    } finally {
+      setIsGeneratingVideoStrip(false);
+      setVideoProgressText('');
+    }
+  };
+
+  // 7. Download Single Live Photo Clip (Playable Video)
+  const handleDownloadLiveClip = (clip, index) => {
     soundEngine.playTrayDrop();
-    triggerVideoDownload(clip.videoUrl, clip.filename);
-    setDownloadNotice(`✓ Downloaded Live Clip ${clip.id} (${clip.filename})!`);
+    const targetClip = clip || (liveClips || []).find((c) => c.id === index);
+    if (!targetClip) {
+      setDownloadNotice(`⚠️ Live Clip ${index} is not ready yet.`);
+      setTimeout(() => setDownloadNotice(''), 3000);
+      return;
+    }
+    const ext = targetClip.extension || getVideoFileExtension(targetClip.mimeType);
+    const filename = targetClip.filename || `vintage-booth-live-${index}.${ext}`;
+    const source = targetClip.blob || targetClip.videoUrl;
+    triggerVideoDownload(source, filename);
+    setDownloadNotice(`✓ Downloaded Live Video #${index} (${filename})!`);
     setTimeout(() => setDownloadNotice(''), 3000);
   };
 
-  // 6. Download All Live Clips sequentially
+  // 8. Download All Live Clips sequentially
   const handleDownloadAllLiveClips = () => {
     soundEngine.playTrayDrop();
-    liveClips.forEach((clip, idx) => {
-      setTimeout(() => {
-        triggerVideoDownload(clip.videoUrl, clip.filename);
-      }, idx * 300);
+    setDownloadNotice('✓ Downloading all 4 Live Photo video clips...');
+    [1, 2, 3, 4].forEach((num, idx) => {
+      const clip = (liveClips || []).find((c) => c.id === num);
+      if (clip) {
+        setTimeout(() => {
+          const ext = clip.extension || getVideoFileExtension(clip.mimeType);
+          const filename = clip.filename || `vintage-booth-live-${num}.${ext}`;
+          const source = clip.blob || clip.videoUrl;
+          triggerVideoDownload(source, filename);
+        }, idx * 350);
+      }
     });
-    setDownloadNotice('✓ Downloading all 4 Live Photo clips...');
-    setTimeout(() => setDownloadNotice(''), 3500);
+    setTimeout(() => setDownloadNotice('✓ All 4 Live Photo video clips downloaded!'), 4 * 350 + 600);
   };
 
   // 7. Interactive Click-to-Play Live Photo directly inside the strip photo frame
@@ -182,8 +261,8 @@ export default function PhotoStripPreview({
     setActivePlayingPhotoId((prev) => (prev === photoId ? null : photoId));
   };
 
-  const activeWidthPreset = STRIP_WIDTH_PRESETS[currentWidthId] || STRIP_WIDTH_PRESETS.wide;
-  const activeDesignPreset = STRIP_DESIGNS.find((d) => d.id === currentDesignId) || STRIP_DESIGNS[0];
+  const activeWidthPreset = STRIP_WIDTH_PRESETS[selectedWidthId] || STRIP_WIDTH_PRESETS.wide;
+  const activeDesignPreset = STRIP_DESIGNS.find((d) => d.id === selectedDesignId) || STRIP_DESIGNS[0];
 
   return (
     <div className="strip-preview-stage">
@@ -213,7 +292,7 @@ export default function PhotoStripPreview({
             </div>
           ) : (
             <div
-              className={`physical-strip-card ${currentWidthId === 'slim' ? 'card-slim' : 'card-wide'}`}
+              className={`physical-strip-card ${selectedWidthId === 'slim' ? 'card-slim' : 'card-wide'}`}
               style={{
                 width: activeWidthPreset.cardWidthCss,
                 aspectRatio: activeWidthPreset.aspectRatioCss
@@ -238,7 +317,9 @@ export default function PhotoStripPreview({
                 <span
                   className="strip-live-caption-text"
                   style={{
-                    color: activeDesignPreset.captionColor
+                    color: selectedDesignId === 'solid_colors'
+                      ? (SOLID_COLOR_PALETTE.find((c) => c.id === selectedSolidColorId)?.captionColor || '#ffffff')
+                      : activeDesignPreset.captionColor
                   }}
                 >
                   {caption.trim() || <span className="caption-empty-dot">• • •</span>}
@@ -281,7 +362,6 @@ export default function PhotoStripPreview({
                             muted
                             playsInline
                             className="strip-slot-video"
-                            style={{ filter: selectedFilter?.cssFilter || 'none' }}
                             onEnded={() => setActivePlayingPhotoId(null)}
                           />
                         ) : null}
@@ -312,7 +392,7 @@ export default function PhotoStripPreview({
             <div className="preview-width-toggle-group">
               <button
                 type="button"
-                className={`preview-width-btn ${currentWidthId === 'wide' ? 'active' : ''}`}
+                className={`preview-width-btn ${selectedWidthId === 'wide' ? 'active' : ''}`}
                 onClick={() => handleWidthSwitch('wide')}
                 title="Classic 2 × 6″ wide photo strip format"
               >
@@ -320,7 +400,7 @@ export default function PhotoStripPreview({
               </button>
               <button
                 type="button"
-                className={`preview-width-btn ${currentWidthId === 'slim' ? 'active' : ''}`}
+                className={`preview-width-btn ${selectedWidthId === 'slim' ? 'active' : ''}`}
                 onClick={() => handleWidthSwitch('slim')}
                 title="Narrow 1.6 × 6″ ribbon strip format"
               >
@@ -328,10 +408,12 @@ export default function PhotoStripPreview({
               </button>
             </div>
 
-            {/* 6 Preset Design Badges */}
+            {/* 5 Preset Design Badges */}
             <div className="preview-designs-picker">
               {STRIP_DESIGNS.map((d) => {
-                const isSelected = currentDesignId === d.id;
+                const isSelected = selectedDesignId === d.id;
+                const solidObj = SOLID_COLOR_PALETTE.find((c) => c.id === selectedSolidColorId);
+                const swatchBg = d.id === 'solid_colors' ? solidObj?.hex : d.swatchBg;
                 return (
                   <button
                     key={d.id}
@@ -342,13 +424,55 @@ export default function PhotoStripPreview({
                   >
                     <span
                       className="design-pill-swatch"
-                      style={{ backgroundColor: d.swatchBg, borderColor: d.swatchBorder }}
+                      style={{
+                        background: swatchBg,
+                        borderColor: isSelected ? 'var(--color-mustard-bright)' : (d.swatchBorder || 'rgba(255,255,255,0.4)')
+                      }}
                     />
                     <span>{d.name}</span>
                   </button>
                 );
               })}
             </div>
+
+            {/* Solid Colours Palette inside Preview (revealed if Solid Colours selected) */}
+            {selectedDesignId === 'solid_colors' && (
+              <div className="preview-solid-palette">
+                <span className="preview-solid-title">Select Solid Background:</span>
+                <div className="preview-solid-swatches">
+                  {SOLID_COLOR_PALETTE.map((color) => {
+                    const isColorSelected = selectedSolidColorId === color.id;
+                    return (
+                      <button
+                        key={color.id}
+                        type="button"
+                        className={`preview-color-btn ${isColorSelected ? 'active' : ''}`}
+                        onClick={() => handleSolidColorSwitch(color.id)}
+                        title={`${color.name} background`}
+                      >
+                        <span
+                          className="preview-color-circle"
+                          style={{
+                            backgroundColor: color.hex,
+                            border: color.id === 'white' ? '1.5px solid #d4d4d8' : '1.5px solid rgba(0, 0, 0, 0.25)'
+                          }}
+                        >
+                          {isColorSelected && (
+                            <span
+                              className="preview-color-check"
+                              style={{ color: color.isDark ? '#ffffff' : '#141414' }}
+                            >
+                              ✓
+                            </span>
+                          )}
+                        </span>
+                        <span className="preview-color-label">{color.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Caption Editor Box */}
@@ -378,7 +502,11 @@ export default function PhotoStripPreview({
               </div>
               <div className="spec-item">
                 <span className="spec-label">DESIGN PRESET:</span>
-                <span className="spec-value">{activeDesignPreset.name}</span>
+                <span className="spec-value">
+                  {selectedDesignId === 'solid_colors'
+                    ? `Solid ${SOLID_COLOR_PALETTE.find((c) => c.id === selectedSolidColorId)?.name}`
+                    : activeDesignPreset.name}
+                </span>
               </div>
               <div className="spec-item">
                 <span className="spec-label">FILTER EMULSION:</span>
@@ -396,58 +524,89 @@ export default function PhotoStripPreview({
 
           {/* Download & Save Controls */}
           <div className="strip-action-buttons">
-            {/* Primary: Download Complete Strip */}
-            <button
-              type="button"
-              className="strip-btn download-strip-btn"
-              onClick={handleDownloadStrip}
-              disabled={isComposingBase}
-              aria-label="Download complete photo strip PNG"
-            >
-              <span className="btn-icon">📥</span>
-              <div className="btn-labels">
-                <span className="main-text">DOWNLOAD PHOTO STRIP</span>
-                <span className="sub-text">HIGH-RES PNG ({activeWidthPreset.sub.toUpperCase()})</span>
-              </div>
-            </button>
+            {/* Primary Download Bay: 3 Choices for Live Photos mode, Single PNG for Still mode */}
+            {captureMode === 'live' ? (
+              <div className="live-strip-download-group">
+                <div className="live-strip-download-header">
+                  <span className="live-badge-glow">✦ LIVE PHOTOS MODE ✦</span>
+                  <h3 className="live-download-heading">CHOOSE STRIP DOWNLOAD FORMAT:</h3>
+                </div>
 
-            {/* Secondary: Individual Photo Downloads */}
-            <div className="individual-downloads-card">
-              <div className="individual-header">
-                <span className="individual-title">SAVE INDIVIDUAL POSES:</span>
-                <button
-                  type="button"
-                  className="save-all-link-btn"
-                  onClick={handleDownloadAllIndividual}
-                  title="Download all 4 individual photos"
-                >
-                  Save All 4
-                </button>
-              </div>
-
-              <div className="individual-buttons-grid">
-                {capturedPhotos.map((photo, idx) => (
+                <div className="live-strip-options-grid">
+                  {/* Choice A: Get Live Photo Strip (Video) */}
                   <button
-                    key={photo.id || idx}
                     type="button"
-                    className="single-photo-dl-btn"
-                    onClick={() => handleDownloadSinglePhoto(photo, idx)}
-                    title={`Download Photo ${idx + 1} (PNG)`}
+                    className="strip-btn live-format-btn live-video-btn"
+                    onClick={handleDownloadLiveStrip}
+                    disabled={isComposingBase || isGeneratingVideoStrip}
+                    aria-label="Download animated Live Photo Strip video"
                   >
-                    <span className="dl-icon">📷</span>
-                    <span>Pose #{idx + 1}</span>
+                    <span className="btn-icon">🎞️</span>
+                    <div className="btn-labels">
+                      <span className="main-text">GET LIVE PHOTO STRIP</span>
+                      <span className="sub-text">
+                        {isGeneratingVideoStrip
+                          ? videoProgressText || 'DEVELOPING VIDEO STRIP...'
+                          : `ANIMATED VIDEO (${activeWidthPreset.sub.toUpperCase()})`}
+                      </span>
+                    </div>
                   </button>
-                ))}
-              </div>
-            </div>
 
-            {/* Tertiary: Live Photo Downloads (Only in Live Photos Mode) */}
-            {captureMode === 'live' && liveClips && liveClips.length > 0 && (
+                  {/* Choice B: Get Still Photo Strip (PNG) */}
+                  <button
+                    type="button"
+                    className="strip-btn live-format-btn still-png-btn"
+                    onClick={handleDownloadStrip}
+                    disabled={isComposingBase || isGeneratingVideoStrip}
+                    aria-label="Download classic static photo strip PNG"
+                  >
+                    <span className="btn-icon">🖼️</span>
+                    <div className="btn-labels">
+                      <span className="main-text">GET STILL PHOTO STRIP</span>
+                      <span className="sub-text">STATIC HIGH-RES PRINT (PNG)</span>
+                    </div>
+                  </button>
+
+                  {/* Choice C: Get Both (Video + PNG) */}
+                  <button
+                    type="button"
+                    className="strip-btn live-format-btn get-both-btn"
+                    onClick={handleDownloadBothStrips}
+                    disabled={isComposingBase || isGeneratingVideoStrip}
+                    aria-label="Download both animated video strip and static PNG"
+                  >
+                    <span className="btn-icon">✨</span>
+                    <div className="btn-labels">
+                      <span className="main-text">GET BOTH (VIDEO + STILL)</span>
+                      <span className="sub-text">ANIMATED STRIP + HIGH-RES PNG</span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* Still Photos Mode: Standard Single High-Res PNG Button */
+              <button
+                type="button"
+                className="strip-btn download-strip-btn"
+                onClick={handleDownloadStrip}
+                disabled={isComposingBase}
+                aria-label="Download complete photo strip PNG"
+              >
+                <span className="btn-icon">📥</span>
+                <div className="btn-labels">
+                  <span className="main-text">DOWNLOAD PHOTO STRIP</span>
+                  <span className="sub-text">HIGH-RES PNG ({activeWidthPreset.sub.toUpperCase()})</span>
+                </div>
+              </button>
+            )}
+
+            {/* Individual Live Photo Video Downloads (Only in Live Photos Mode) */}
+            {captureMode === 'live' && (
               <div className="live-downloads-card">
                 <div className="live-downloads-header">
                   <div className="live-header-tag">
                     <span className="live-pulse-dot"></span>
-                    <span className="live-header-title">LIVE PHOTO CLIPS ({liveClips.length})</span>
+                    <span className="live-header-title">LIVE PHOTO CLIPS (4 VIDEOS)</span>
                   </div>
                   <button
                     type="button"
@@ -455,29 +614,69 @@ export default function PhotoStripPreview({
                     onClick={handleDownloadAllLiveClips}
                     title="Download all 4 Live video clips"
                   >
-                    Save All Live
+                    Save All 4 Videos
                   </button>
                 </div>
                 <p className="live-downloads-hint">
-                  Click any photo frame on the strip to play its motion clip!
+                  Download each pose as a playable video file preserving pre- & post-shutter motion:
                 </p>
 
                 <div className="live-buttons-grid">
-                  {liveClips.map((clip) => (
-                    <button
-                      key={clip.id}
-                      type="button"
-                      className="single-live-dl-btn"
-                      onClick={() => handleDownloadLiveClip(clip)}
-                      title={`Download Live Clip ${clip.id} (${clip.filename})`}
-                    >
-                      <span className="dl-icon">📹</span>
-                      <span>Clip #{clip.id} ({clip.extension.toUpperCase()})</span>
-                    </button>
-                  ))}
+                  {[1, 2, 3, 4].map((photoNum) => {
+                    const clip = (liveClips || []).find((c) => c.id === photoNum);
+                    const ext = (clip?.extension || 'mp4').toUpperCase();
+                    return (
+                      <button
+                        key={`live-clip-btn-${photoNum}`}
+                        type="button"
+                        className="single-live-dl-btn"
+                        onClick={() => handleDownloadLiveClip(clip, photoNum)}
+                        title={`Download Live Video #${photoNum} (${ext})`}
+                      >
+                        <span className="dl-icon">📹</span>
+                        <span>Live Video #{photoNum} ({ext})</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
+
+            {/* Individual Still Photos Download */}
+            <div className="individual-downloads-card">
+              <div className="individual-header">
+                <span className="individual-title">
+                  {captureMode === 'live' ? 'STILL PHOTOGRAPHS (4 POSES):' : 'SAVE INDIVIDUAL POSES:'}
+                </span>
+                <button
+                  type="button"
+                  className="save-all-link-btn"
+                  onClick={handleDownloadAllIndividual}
+                  title="Download all 4 individual still photos"
+                >
+                  Save All 4 Stills
+                </button>
+              </div>
+
+              <div className="individual-buttons-grid">
+                {[1, 2, 3, 4].map((photoNum, idx) => {
+                  const photo = capturedPhotos[idx];
+                  return (
+                    <button
+                      key={photo?.id || `still-photo-btn-${photoNum}`}
+                      type="button"
+                      className="single-photo-dl-btn"
+                      onClick={() => photo && handleDownloadSinglePhoto(photo, idx)}
+                      disabled={!photo}
+                      title={`Download Still Photo ${photoNum} (PNG)`}
+                    >
+                      <span className="dl-icon">📷</span>
+                      <span>Still Photo #{photoNum} (PNG)</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
             {/* Retake Control */}
             <button

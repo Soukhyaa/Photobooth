@@ -4,146 +4,179 @@ export default function LandingBooth({ onStepInside }) {
   return (
     <main className="landing-stage">
       {/* Warm Ambient Sconce Lighting */}
-      <div className="ambient-glow-top"></div>
-      
-      {/* Retro Venue Wall & Header Placard */}
-      <div className="parlor-wall-accent">
-        <div className="wall-crest">
-          <span className="crest-line"></span>
-          <span className="crest-text">ARCADE ATTRACTIONS • NO. 44</span>
-          <span className="crest-line"></span>
-        </div>
-      </div>
+      <div className="ambient-glow-top" aria-hidden="true" />
 
-      {/* The Physical Vintage Booth */}
+      {/* The Physical Vintage Photo Booth Machine */}
       <div className="booth-physical-container">
-        {/* Booth Crown / Roof Header with Marquee */}
+        {/* Booth Crown: Prominent Marquee Sign at Top */}
         <div className="booth-roof">
-          <div className="roof-trim-chrome"></div>
-          
+          <div className="roof-trim-chrome" />
+
           <div className="marquee-box">
-            <div className="marquee-chase-bulbs top-bulbs">
-              {[...Array(12)].map((_, i) => (
-                <span key={`t-${i}`} className={`bulb bulb-${(i % 3) + 1}`}></span>
+            <div className="marquee-chase-bulbs top-bulbs" aria-hidden="true">
+              {[...Array(14)].map((_, i) => (
+                <span key={`t-${i}`} className={`bulb bulb-${(i % 3) + 1}`} />
               ))}
             </div>
 
             <div className="marquee-face">
               <span className="marquee-star">✦</span>
-              <h1 className="marquee-text">PHOTO BOOTH</h1>
+              <h1 className="marquee-text">VINTAGE BOOTH</h1>
               <span className="marquee-star">✦</span>
             </div>
 
-            <div className="marquee-chase-bulbs bottom-bulbs">
-              {[...Array(12)].map((_, i) => (
-                <span key={`b-${i}`} className={`bulb bulb-${(i % 3) + 1}`}></span>
+            <div className="marquee-chase-bulbs bottom-bulbs" aria-hidden="true">
+              {[...Array(14)].map((_, i) => (
+                <span key={`b-${i}`} className={`bulb bulb-${(i % 3) + 1}`} />
               ))}
             </div>
           </div>
         </div>
 
-        {/* Booth Main Body (Deep Cherry Lacquer Finish) */}
+        {/* Booth Main Cabinet: Two-Column Structure (Left: Controls & Slot, Right: Walk-In Doorway) */}
         <div className="booth-cabinet">
-          {/* Chrome Corner Rivets & Hardware */}
-          <div className="chrome-bracket bracket-tl"></div>
-          <div className="chrome-bracket bracket-tr"></div>
-          <div className="chrome-bracket bracket-bl"></div>
-          <div className="chrome-bracket bracket-br"></div>
+          {/* Chrome Corner Brackets */}
+          <div className="chrome-bracket bracket-tl" aria-hidden="true" />
+          <div className="chrome-bracket bracket-tr" aria-hidden="true" />
+          <div className="chrome-bracket bracket-bl" aria-hidden="true" />
+          <div className="chrome-bracket bracket-br" aria-hidden="true" />
 
-          {/* Left Panel: Vintage Instructions & Mechanical Coin Slot */}
-          <aside className="booth-side-panel">
-            <div className="vintage-plaque">
-              <div className="plaque-header">INSTRUCTIONS</div>
-              <ol className="plaque-steps">
-                <li><span>1</span> Step inside & pull curtain</li>
-                <li><span>2</span> Select your favorite film style</li>
-                <li><span>3</span> 4 automated flashes</li>
-                <li><span>4</span> Collect strip from lower slot</li>
-              </ol>
-              <div className="plaque-footer">AUTOMATIC • DRY IN SECONDS</div>
+          {/* LEFT SIDE: Upper-Left Instruction Panel & Lower-Left Collection Slot */}
+          <aside className="booth-left-column">
+            {/* Upper-Left: Instruction Panel */}
+            <div className="booth-instruction-panel">
+              <div className="vintage-plaque">
+                <div className="plaque-header">
+                  <span className="plaque-star">✦</span>
+                  <span className="plaque-title">INSTRUCTIONS</span>
+                  <span className="plaque-star">✦</span>
+                </div>
+                <ol className="plaque-steps">
+                  <li>
+                    <span className="step-num">1</span>
+                    <span className="step-desc">Step inside & draw curtain</span>
+                  </li>
+                  <li>
+                    <span className="step-num">2</span>
+                    <span className="step-desc">Choose your film style</span>
+                  </li>
+                  <li>
+                    <span className="step-num">3</span>
+                    <span className="step-desc">Strike poses</span>
+                  </li>
+                  <li>
+                    <span className="step-num">4</span>
+                    <span className="step-desc">Collect photo strip below</span>
+                  </li>
+                </ol>
+              </div>
             </div>
 
-            <div className="coin-slot-assembly">
-              <div className="coin-plate">
-                <span className="coin-label">INSERT COIN</span>
-                <div className="coin-slit"></div>
-                <span className="coin-denom">25¢ ONLY</span>
+            {/* Lower-Left: Photo Strip Collection Slot */}
+            <div className="booth-collection-slot-module">
+              <div className="collection-slot-header">
+                <span className="slot-glow-lamp" aria-hidden="true" />
+                <span className="collection-slot-label">COLLECT YOUR STRIPS</span>
+                <span className="slot-glow-lamp" aria-hidden="true" />
+              </div>
+
+              <div className="dispense-slot-housing">
+                <div className="chrome-slot-rim">
+                  <span className="slot-emboss">PHOTOS</span>
+                  <div className="slot-opening">
+                    <div className="slot-shadow" />
+                    {/* Realistic peek of a photo strip edge resting in tray */}
+                    <div className="slot-sample-strip-peek" aria-hidden="true">
+                      <div className="peek-strip-paper">
+                        <span className="peek-strip-dot" />
+                        <span className="peek-strip-dot" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="collection-tray-lip">
+                  <span className="tray-label">COLLECT HERE</span>
+                </div>
               </div>
             </div>
           </aside>
 
-          {/* Center: Booth Doorway with Velvet Drapes */}
-          <section className="booth-doorway" aria-label="Photo booth entrance">
-            {/* Interior Peeking Glow */}
-            <div className="doorway-interior-view">
-              <div className="interior-stool"></div>
-              <div className="interior-mirror-glow"></div>
-              <div className="interior-back-wall"></div>
-            </div>
-
-            {/* Draped Curtains in doorway */}
-            <div className="doorway-curtain drape-left">
-              <div className="fabric-fold f1"></div>
-              <div className="fabric-fold f2"></div>
-              <div className="fabric-fold f3"></div>
-            </div>
-            <div className="doorway-curtain drape-right">
-              <div className="fabric-fold f1"></div>
-              <div className="fabric-fold f2"></div>
-              <div className="fabric-fold f3"></div>
-            </div>
-
-            {/* Step Inside Floating Action */}
-            <div className="doorway-action-zone">
-              <button
-                type="button"
-                className="step-inside-btn"
-                onClick={onStepInside}
-                aria-label="Step inside the photo booth"
-              >
-                <div className="btn-bulb-ring"></div>
-                <div className="btn-inner">
-                  <span className="btn-icon">🎟️</span>
-                  <span className="btn-text">STEP INSIDE</span>
-                  <span className="btn-subtext">CLICK TO ENTER</span>
+          {/* RIGHT SIDE: Walk-In Doorway with Hanging Velvet Curtain */}
+          <section className="booth-doorway-column" aria-label="Photo booth walk-in entrance">
+            <div className="doorway-frame">
+              {/* Brass Curtain Rail & Hanging Rings */}
+              <div className="curtain-brass-rail" aria-hidden="true">
+                <div className="rail-bracket bracket-left" />
+                <div className="rail-rod">
+                  {[...Array(8)].map((_, i) => (
+                    <span key={`ring-${i}`} className="rail-ring" />
+                  ))}
                 </div>
-              </button>
+                <div className="rail-bracket bracket-right" />
+              </div>
+
+              {/* Interior Peeking Glow through Doorway */}
+              <div className="doorway-interior-view" aria-hidden="true">
+                <div className="interior-mirror-glow" />
+                <div className="interior-stool" />
+                <div className="interior-back-wall" />
+              </div>
+
+              {/* Hanging Velvet Curtain with Rich Folds & Pleats */}
+              <div className="doorway-velvet-curtain" aria-hidden="true">
+                {/* Upper Curtain Valance */}
+                <div className="curtain-top-drape" />
+
+                {/* Left Velvet Drape */}
+                <div className="doorway-curtain drape-left">
+                  <div className="fabric-fold f1" />
+                  <div className="fabric-fold f2" />
+                  <div className="fabric-fold f3" />
+                  <div className="fabric-fold f4" />
+                </div>
+
+                {/* Right Velvet Drape */}
+                <div className="doorway-curtain drape-right">
+                  <div className="fabric-fold f1" />
+                  <div className="fabric-fold f2" />
+                  <div className="fabric-fold f3" />
+                  <div className="fabric-fold f4" />
+                </div>
+
+                {/* Golden Fringe along curtain hem */}
+                <div className="curtain-bottom-fringe" />
+              </div>
+
+              {/* Interactive Step Inside Arcade Push-Button */}
+              <div className="doorway-action-zone">
+                <button
+                  type="button"
+                  className="step-inside-btn"
+                  onClick={onStepInside}
+                  aria-label="Step inside the photo booth"
+                >
+                  <div className="btn-bulb-ring" />
+                  <div className="btn-inner">
+                    <span className="btn-icon">🎟️</span>
+                    <span className="btn-text">STEP INSIDE</span>
+                    <span className="btn-subtext">CLICK TO ENTER</span>
+                  </div>
+                </button>
+              </div>
             </div>
           </section>
-
-          {/* Right Panel: Feature Badges & Photo Dispenser Preview */}
-          <aside className="booth-dispenser-panel">
-            <div className="feature-badge-plate">
-              <div className="badge-vintage-star">★ ★ ★</div>
-              <div className="badge-title">INSTANT PRINT</div>
-              <div className="badge-subtitle">GENUINE PHOTO PAPER FINISH</div>
-            </div>
-
-            {/* Dispensing Slot (Preview for Stage 5) */}
-            <div className="dispense-slot-housing">
-              <div className="chrome-slot-rim">
-                <span className="slot-emboss">PHOTOS</span>
-                <div className="slot-opening">
-                  <div className="slot-shadow"></div>
-                </div>
-              </div>
-              <div className="collection-tray-lip">
-                <span className="tray-label">COLLECT HERE</span>
-              </div>
-            </div>
-          </aside>
         </div>
 
-        {/* Booth Floor Base & Shadow */}
+        {/* Booth Floor Base & Kickplate */}
         <div className="booth-base-footer">
-          <div className="kickplate-chrome"></div>
+          <div className="kickplate-chrome" />
         </div>
       </div>
 
       {/* Arcade Parlor Floor Wainscoting / Shadow */}
       <div className="parlor-floor">
-        <div className="floor-wood-line"></div>
-        <div className="floor-perspective-shadow"></div>
+        <div className="floor-wood-line" />
+        <div className="floor-perspective-shadow" />
       </div>
     </main>
   );

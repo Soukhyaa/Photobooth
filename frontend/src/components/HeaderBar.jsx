@@ -6,7 +6,7 @@ export default function HeaderBar({ isMuted, onToggleMute }) {
       <div className="header-brand">
         <span className="brand-star">★</span>
         <span className="brand-title">THE VINTAGE BOOTH</span>
-        <span className="brand-badge">AUTHENTIC 4-STRIP</span>
+        <span className="brand-star">★</span>
       </div>
 
       <div className="header-actions">

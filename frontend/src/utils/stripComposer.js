@@ -9,6 +9,11 @@
  * - Exact 4:3 photo aspect ratio preservation across all designs
  */
 
+import {
+  getSupportedVideoMimeType,
+  getVideoFileExtension
+} from './liveRecorder.js';
+
 export function getFormattedVintageDate() {
   const now = new Date();
   const months = [
@@ -80,17 +85,100 @@ export const STRIP_WIDTH_PRESETS = {
 };
 
 /**
- * 6 Preset Designs
+ * Solid Colours Palette Choices (for Solid Colours Theme)
+ */
+export const SOLID_COLOR_PALETTE = [
+  {
+    id: 'black',
+    name: 'Black',
+    hex: '#141414',
+    captionColor: '#ffffff',
+    textColor: '#f1f5f9',
+    arcadeColor: '#fab839',
+    photoBorder: 'rgba(255, 255, 255, 0.9)',
+    dividerColor: 'rgba(255, 255, 255, 0.35)',
+    isDark: true
+  },
+  {
+    id: 'red',
+    name: 'Red',
+    hex: '#c51f33',
+    captionColor: '#ffffff',
+    textColor: '#fef2f2',
+    arcadeColor: '#fef08a',
+    photoBorder: 'rgba(255, 255, 255, 0.95)',
+    dividerColor: 'rgba(255, 255, 255, 0.35)',
+    isDark: true
+  },
+  {
+    id: 'baby_pink',
+    name: 'Baby Pink',
+    hex: '#fbcfe8',
+    captionColor: '#831843',
+    textColor: '#9d174d',
+    arcadeColor: '#9d174d',
+    photoBorder: 'rgba(131, 24, 67, 0.3)',
+    dividerColor: 'rgba(131, 24, 67, 0.22)',
+    isDark: false
+  },
+  {
+    id: 'butter_yellow',
+    name: 'Butter Yellow',
+    hex: '#fef08a',
+    captionColor: '#451a03',
+    textColor: '#78350f',
+    arcadeColor: '#b45309',
+    photoBorder: 'rgba(120, 53, 15, 0.3)',
+    dividerColor: 'rgba(120, 53, 15, 0.25)',
+    isDark: false
+  },
+  {
+    id: 'baby_blue',
+    name: 'Baby Blue',
+    hex: '#bae6fd',
+    captionColor: '#0c4a6e',
+    textColor: '#0369a1',
+    arcadeColor: '#0284c7',
+    photoBorder: 'rgba(12, 74, 110, 0.3)',
+    dividerColor: 'rgba(12, 74, 110, 0.25)',
+    isDark: false
+  },
+  {
+    id: 'white',
+    name: 'White',
+    hex: '#ffffff',
+    captionColor: '#18181b',
+    textColor: '#3f3f46',
+    arcadeColor: '#d97706',
+    photoBorder: 'rgba(0, 0, 0, 0.25)',
+    dividerColor: 'rgba(0, 0, 0, 0.18)',
+    isDark: false
+  },
+  {
+    id: 'green',
+    name: 'Green',
+    hex: '#15803d',
+    captionColor: '#ffffff',
+    textColor: '#f0fdf4',
+    arcadeColor: '#fef08a',
+    photoBorder: 'rgba(255, 255, 255, 0.95)',
+    dividerColor: 'rgba(255, 255, 255, 0.35)',
+    isDark: true
+  }
+];
+
+/**
+ * 5 Strip Design Themes
  */
 export const STRIP_DESIGNS = [
   {
     id: 'classic_cream',
     name: 'Classic Cream',
-    tagline: 'Warm Ivory Vintage',
-    description: 'Existing warm ivory vintage design with delicate analog grain and classic typography.',
+    tagline: 'Warm Plain Cream',
+    description: 'Plain warm cream background with delicate analog grain and classic typography.',
     paperColor: '#faf6ec',
     outerBorder: 'rgba(180, 160, 130, 0.28)',
-    photoBorder: 'rgba(56, 8, 17, 0.16)',
+    photoBorder: 'rgba(56, 8, 17, 0.18)',
     photoMatColor: null,
     photoMatPadding: 0,
     dividerColor: 'rgba(180, 160, 130, 0.35)',
@@ -100,108 +188,88 @@ export const STRIP_DESIGNS = [
     hasPaperGrain: true,
     patternType: 'none',
     swatchBg: '#faf6ec',
-    swatchBorder: '#b8770d',
+    swatchBorder: '#df981c',
     swatchText: '#420814'
   },
   {
-    id: 'clean_minimal',
-    name: 'Clean Minimal',
-    tagline: 'Plain White Studio',
-    description: 'Plain white background with crisp edges and no decorative patterns.',
-    paperColor: '#ffffff',
-    outerBorder: 'rgba(0, 0, 0, 0.08)',
-    photoBorder: 'rgba(0, 0, 0, 0.14)',
+    id: 'polka_dots',
+    name: 'Polka Dots',
+    tagline: 'Cream Subtle Dots',
+    description: 'Cream background with small, evenly spaced, subtle polka dots.',
+    paperColor: '#faf6ec',
+    outerBorder: 'rgba(180, 160, 130, 0.3)',
+    photoBorder: 'rgba(56, 8, 17, 0.2)',
     photoMatColor: null,
     photoMatPadding: 0,
-    dividerColor: 'rgba(0, 0, 0, 0.15)',
-    textColor: '#374151',
-    arcadeColor: '#4b5563',
-    captionColor: '#111827',
-    hasPaperGrain: false,
-    patternType: 'none',
-    swatchBg: '#ffffff',
-    swatchBorder: '#9ca3af',
-    swatchText: '#111827'
-  },
-  {
-    id: 'cherry_pop',
-    name: 'Cherry Pop',
-    tagline: 'Deep Cherry & Cream',
-    description: 'Deep cherry-red background with cream photo matting borders.',
-    paperColor: '#4a0e1b',
-    outerBorder: 'rgba(250, 184, 57, 0.45)',
-    photoBorder: '#fff5e6',
-    photoMatColor: '#fff8f0', // Crisp cream matting frame around photos
-    photoMatPadding: 6,
-    dividerColor: 'rgba(250, 184, 57, 0.45)',
-    textColor: '#fab839',
-    arcadeColor: '#fab839',
-    captionColor: '#ffffff',
-    hasPaperGrain: true,
-    patternType: 'none',
-    swatchBg: '#4a0e1b',
-    swatchBorder: '#fab839',
-    swatchText: '#ffffff'
-  },
-  {
-    id: 'butter_yellow',
-    name: 'Butter Yellow',
-    tagline: 'Soft Butter Yellow',
-    description: 'Soft butter-yellow background with warm roasted sepia accents.',
-    paperColor: '#fbf0c2',
-    outerBorder: 'rgba(180, 130, 20, 0.3)',
-    photoBorder: 'rgba(110, 60, 10, 0.22)',
-    photoMatColor: null,
-    photoMatPadding: 0,
-    dividerColor: 'rgba(180, 130, 20, 0.35)',
-    textColor: '#703808',
-    arcadeColor: '#8a4b0d',
-    captionColor: '#522806',
-    hasPaperGrain: true,
-    patternType: 'none',
-    swatchBg: '#fbf0c2',
-    swatchBorder: '#df981c',
-    swatchText: '#522806'
-  },
-  {
-    id: 'polka_party',
-    name: 'Polka Party',
-    tagline: 'Retro Polka Dots',
-    description: 'Small, tasteful polka-dot pattern on warm porcelain cream.',
-    paperColor: '#fdf9f2',
-    outerBorder: 'rgba(180, 50, 75, 0.25)',
-    photoBorder: 'rgba(70, 15, 25, 0.2)',
-    photoMatColor: '#ffffff',
-    photoMatPadding: 4,
-    dividerColor: 'rgba(180, 50, 75, 0.3)',
-    textColor: '#701426',
+    dividerColor: 'rgba(180, 160, 130, 0.35)',
+    textColor: '#6b1426',
     arcadeColor: '#b8770d',
-    captionColor: '#4a0b18',
+    captionColor: '#420814',
     hasPaperGrain: true,
     patternType: 'polka_dots',
-    swatchBg: '#fdf9f2',
+    swatchBg: '#faf6ec',
     swatchBorder: '#c43d56',
     swatchText: '#701426'
   },
   {
-    id: 'stars_hearts',
-    name: 'Stars & Hearts',
-    tagline: 'Decorative Stars & Hearts',
-    description: 'Small decorative stars and hearts along the margins.',
-    paperColor: '#fef7f9',
-    outerBorder: 'rgba(215, 75, 105, 0.25)',
-    photoBorder: 'rgba(100, 20, 35, 0.18)',
-    photoMatColor: '#ffffff',
-    photoMatPadding: 4,
-    dividerColor: 'rgba(215, 75, 105, 0.3)',
-    textColor: '#80182e',
-    arcadeColor: '#df981c',
-    captionColor: '#500e1c',
-    hasPaperGrain: true,
-    patternType: 'stars_hearts',
-    swatchBg: '#fef7f9',
+    id: 'little_hearts',
+    name: 'Little Hearts',
+    tagline: 'Scattered Red Hearts',
+    description: 'White background with small, scattered red hearts.',
+    paperColor: '#ffffff',
+    outerBorder: 'rgba(225, 29, 72, 0.2)',
+    photoBorder: 'rgba(180, 25, 55, 0.25)',
+    photoMatColor: null,
+    photoMatPadding: 0,
+    dividerColor: 'rgba(225, 29, 72, 0.25)',
+    textColor: '#be123c',
+    arcadeColor: '#e11d48',
+    captionColor: '#9f1239',
+    hasPaperGrain: false,
+    patternType: 'little_hearts',
+    swatchBg: '#ffffff',
     swatchBorder: '#e11d48',
-    swatchText: '#80182e'
+    swatchText: '#9f1239'
+  },
+  {
+    id: 'starry',
+    name: 'Starry',
+    tagline: 'Dark-Blue Stars',
+    description: 'White background with small, scattered dark-blue stars.',
+    paperColor: '#ffffff',
+    outerBorder: 'rgba(30, 58, 138, 0.22)',
+    photoBorder: 'rgba(30, 58, 138, 0.25)',
+    photoMatColor: null,
+    photoMatPadding: 0,
+    dividerColor: 'rgba(30, 58, 138, 0.25)',
+    textColor: '#1e40af',
+    arcadeColor: '#2563eb',
+    captionColor: '#1e3a8a',
+    hasPaperGrain: false,
+    patternType: 'starry',
+    swatchBg: '#ffffff',
+    swatchBorder: '#1e3a8a',
+    swatchText: '#1e3a8a'
+  },
+  {
+    id: 'solid_colors',
+    name: 'Solid Colours',
+    tagline: 'Selectable Palette',
+    description: 'A plain solid-colour background with a selectable colour palette.',
+    paperColor: '#141414',
+    outerBorder: null,
+    photoBorder: 'rgba(255, 255, 255, 0.9)',
+    photoMatColor: null,
+    photoMatPadding: 0,
+    dividerColor: 'rgba(255, 255, 255, 0.35)',
+    textColor: '#ffffff',
+    arcadeColor: '#fab839',
+    captionColor: '#ffffff',
+    hasPaperGrain: false,
+    patternType: 'solid_colors',
+    swatchBg: 'linear-gradient(135deg, #141414 0%, #c51f33 33%, #fbcfe8 66%, #bae6fd 100%)',
+    swatchBorder: '#fab839',
+    swatchText: '#ffffff'
   }
 ];
 
@@ -209,16 +277,12 @@ export const STRIP_DESIGNS = [
 let loadedImageElementsCache = [];
 let loadedPhotosCacheKey = '';
 
-// In-memory cache of composed base canvases keyed by `${designId}_${widthId}`
-const composedBaseCanvasCache = new Map();
-
 /**
  * Reset all in-memory strip composer caches (call when retaking photos)
  */
 export function clearComposedStripCache() {
   loadedImageElementsCache = [];
   loadedPhotosCacheKey = '';
-  composedBaseCanvasCache.clear();
 }
 
 /**
@@ -249,16 +313,16 @@ function drawPaperGrain(ctx, width, height) {
 }
 
 /**
- * Draws tasteful retro polka dots across the strip paper background
+ * Draws small, evenly spaced, true solid black polka dots across cream background
  */
 function drawPolkaDots(ctx, width, height) {
   ctx.save();
-  ctx.fillStyle = 'rgba(180, 50, 75, 0.12)';
-  const dotRadius = 3;
-  const spacing = 30;
-  for (let y = 15; y < height; y += spacing) {
+  ctx.fillStyle = '#000000';
+  const dotRadius = 2.2;
+  const spacing = 24;
+  for (let y = 12; y < height; y += spacing) {
     const offsetX = (Math.floor(y / spacing) % 2) * (spacing / 2);
-    for (let x = 15; x < width; x += spacing) {
+    for (let x = 12; x < width; x += spacing) {
       ctx.beginPath();
       ctx.arc(x + offsetX, y, dotRadius, 0, Math.PI * 2);
       ctx.fill();
@@ -317,49 +381,57 @@ function drawDecorativeHeart(ctx, x, y, size, color) {
 }
 
 /**
- * Draws tasteful decorative stars and hearts along the margins
+ * Draws small scattered red hearts pattern across white background
  */
-function drawStarsAndHeartsPattern(ctx, width, height) {
+function drawLittleHeartsPattern(ctx, width, height) {
   ctx.save();
-  const starColor = 'rgba(215, 145, 30, 0.32)'; // Warm vintage gold
-  const heartColor = 'rgba(205, 55, 85, 0.28)'; // Soft vintage rose
-
-  // Scatter along the side borders
-  for (let y = 35; y < height - 60; y += 52) {
-    const isEven = (Math.floor(y / 52) % 2 === 0);
-    // Left margin
-    if (isEven) {
-      drawDecorativeStar(ctx, 10, y, 6, 2.2, starColor);
-    } else {
-      drawDecorativeHeart(ctx, 10, y - 4, 7, heartColor);
-    }
-    // Right margin
-    if (isEven) {
-      drawDecorativeHeart(ctx, width - 10, y - 4, 7, heartColor);
-    } else {
-      drawDecorativeStar(ctx, width - 10, y, 6, 2.2, starColor);
+  const heartColor = 'rgba(225, 29, 72, 0.75)';
+  const spacing = 46;
+  for (let y = 18; y < height - 15; y += spacing) {
+    const row = Math.floor(y / spacing);
+    const offsetX = (row % 2) * (spacing / 2);
+    for (let x = 12; x < width - 8; x += spacing) {
+      const size = 6.5 + (row % 3) * 0.7;
+      const jitterX = ((row * 7 + x) % 9) - 4;
+      const jitterY = ((row * 13 + x) % 9) - 4;
+      drawDecorativeHeart(ctx, x + offsetX + jitterX, y + jitterY, size, heartColor);
     }
   }
+  ctx.restore();
+}
 
-  // Header & Footer decorative accents
-  drawDecorativeStar(ctx, width / 2 - 70, 20, 5, 2, starColor);
-  drawDecorativeStar(ctx, width / 2 + 70, 20, 5, 2, starColor);
-  drawDecorativeHeart(ctx, width / 2 - 80, height - 25, 7, heartColor);
-  drawDecorativeHeart(ctx, width / 2 + 80, height - 25, 7, heartColor);
-
+/**
+ * Draws small scattered dark-blue stars pattern across white background
+ */
+function drawStarryPattern(ctx, width, height) {
+  ctx.save();
+  const starColor = 'rgba(30, 58, 138, 0.78)';
+  const spacing = 46;
+  for (let y = 18; y < height - 15; y += spacing) {
+    const row = Math.floor(y / spacing);
+    const offsetX = (row % 2) * (spacing / 2);
+    for (let x = 12; x < width - 8; x += spacing) {
+      const size = 5.5 + (row % 3) * 0.6;
+      const inner = size * 0.38;
+      const jitterX = ((row * 11 + x) % 9) - 4;
+      const jitterY = ((row * 7 + x) % 9) - 4;
+      drawDecorativeStar(ctx, x + offsetX + jitterX, y + jitterY, size, inner, starColor);
+    }
+  }
   ctx.restore();
 }
 
 /**
  * Composes the base photo strip with the selected design preset and width format.
- * Caches loaded images and rendered canvases for instantaneous (<5ms) design switching.
+ * Caches loaded images across switches for instantaneous (<2ms) design and solid color switching.
  *
  * @param {Array<{ dataUrl: string, id: number }>} photos
  * @param {Object} options
- * @param {string} options.designId - One of the 6 STRIP_DESIGNS ids
+ * @param {string} options.designId - One of the 5 STRIP_DESIGNS ids
+ * @param {string} options.solidColorId - One of the SOLID_COLOR_PALETTE ids
  * @param {string} options.widthId - 'wide' or 'slim'
  * @param {string} options.dateText - Vintage date string
- * @returns {Promise<HTMLCanvasElement>} Cached offscreen canvas containing the base strip
+ * @returns {Promise<HTMLCanvasElement>} Offscreen canvas containing the composed base strip
  */
 export async function composeBasePhotoStrip(photos, options = {}) {
   if (!photos || photos.length === 0) {
@@ -368,18 +440,21 @@ export async function composeBasePhotoStrip(photos, options = {}) {
 
   const {
     designId = 'classic_cream',
+    solidColorId = 'black',
     widthId = 'wide',
     dateText = getFormattedVintageDate()
   } = options;
 
   const widthPreset = STRIP_WIDTH_PRESETS[widthId] || STRIP_WIDTH_PRESETS.wide;
   const designPreset = STRIP_DESIGNS.find((d) => d.id === designId) || STRIP_DESIGNS[0];
+  const solidColorPreset = SOLID_COLOR_PALETTE.find((c) => c.id === solidColorId) || SOLID_COLOR_PALETTE[0];
 
-  // Check composed canvas cache
-  const cacheKey = `${designPreset.id}_${widthPreset.id}`;
-  if (composedBaseCanvasCache.has(cacheKey)) {
-    return composedBaseCanvasCache.get(cacheKey);
-  }
+  const isSolid = designPreset.id === 'solid_colors';
+  const paperColor = isSolid ? solidColorPreset.hex : designPreset.paperColor;
+  const photoBorder = isSolid ? solidColorPreset.photoBorder : designPreset.photoBorder;
+  const dividerColor = isSolid ? solidColorPreset.dividerColor : designPreset.dividerColor;
+  const textColor = isSolid ? solidColorPreset.textColor : designPreset.textColor;
+  const arcadeColor = isSolid ? solidColorPreset.arcadeColor : designPreset.arcadeColor;
 
   const stripWidth = widthPreset.width;
   const stripHeight = widthPreset.height;
@@ -399,14 +474,16 @@ export async function composeBasePhotoStrip(photos, options = {}) {
   }
 
   // 1. Draw Paper Background Base
-  ctx.fillStyle = designPreset.paperColor;
+  ctx.fillStyle = paperColor;
   ctx.fillRect(0, 0, stripWidth, stripHeight);
 
   // 2. Draw Decorative Patterns (if selected)
   if (designPreset.patternType === 'polka_dots') {
     drawPolkaDots(ctx, stripWidth, stripHeight);
-  } else if (designPreset.patternType === 'stars_hearts') {
-    drawStarsAndHeartsPattern(ctx, stripWidth, stripHeight);
+  } else if (designPreset.patternType === 'little_hearts') {
+    drawLittleHeartsPattern(ctx, stripWidth, stripHeight);
+  } else if (designPreset.patternType === 'starry') {
+    drawStarryPattern(ctx, stripWidth, stripHeight);
   }
 
   // 3. Draw Organic Paper Grain / Emulsion Texture (if enabled)
@@ -415,14 +492,18 @@ export async function composeBasePhotoStrip(photos, options = {}) {
   }
 
   // 4. Subtle Inset Border on Paper Edges
-  if (designPreset.outerBorder) {
+  if (designPreset.outerBorder && !isSolid) {
     ctx.strokeStyle = designPreset.outerBorder;
     ctx.lineWidth = 1;
     ctx.strokeRect(10, 10, stripWidth - 20, stripHeight - 20);
+  } else if (isSolid && solidColorPreset.dividerColor) {
+    ctx.strokeStyle = solidColorPreset.dividerColor;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(8, 8, stripWidth - 16, stripHeight - 16);
   }
 
   // 5. Load & Cache Images for this 4-photo set
-  const currentKey = photos.map((p) => p.dataUrl.slice(-30)).join('|');
+  const currentKey = photos.map((p) => (p.dataUrl ? p.dataUrl.slice(-30) : p.id)).join('|');
   if (loadedPhotosCacheKey !== currentKey || loadedImageElementsCache.length === 0) {
     loadedImageElementsCache = await Promise.all(
       photos.slice(0, 4).map((p) => loadImage(p.dataUrl))
@@ -437,25 +518,9 @@ export async function composeBasePhotoStrip(photos, options = {}) {
   for (let i = 0; i < loadedImages.length; i++) {
     const img = loadedImages[i];
 
-    // Optional Photo Matting Frame (e.g. Cherry Pop / Polka Party)
-    if (designPreset.photoMatColor && designPreset.photoMatPadding > 0) {
-      const pad = designPreset.photoMatPadding;
-      ctx.save();
-      ctx.fillStyle = designPreset.photoMatColor;
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
-      ctx.shadowBlur = 8;
-      ctx.shadowOffsetY = 2;
-      ctx.fillRect(sideMargin - pad, currentY - pad, photoWidth + pad * 2, photoHeight + pad * 2);
-      ctx.restore();
-
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(sideMargin - pad, currentY - pad, photoWidth + pad * 2, photoHeight + pad * 2);
-    }
-
     ctx.save();
     // Soft physical drop shadow for photo depth
-    ctx.shadowColor = 'rgba(40, 6, 12, 0.14)';
+    ctx.shadowColor = isSolid && solidColorPreset.isDark ? 'rgba(0, 0, 0, 0.45)' : 'rgba(40, 6, 12, 0.14)';
     ctx.shadowBlur = 6;
     ctx.shadowOffsetY = 2;
 
@@ -464,9 +529,9 @@ export async function composeBasePhotoStrip(photos, options = {}) {
     ctx.restore();
 
     // Emulsion photo border
-    if (designPreset.photoBorder) {
-      ctx.strokeStyle = designPreset.photoBorder;
-      ctx.lineWidth = 1;
+    if (photoBorder) {
+      ctx.strokeStyle = photoBorder;
+      ctx.lineWidth = isSolid ? 2 : 1;
       ctx.strokeRect(sideMargin, currentY, photoWidth, photoHeight);
     }
 
@@ -480,8 +545,8 @@ export async function composeBasePhotoStrip(photos, options = {}) {
   ctx.textAlign = 'center';
 
   // Delicate divider rule above footer
-  if (designPreset.dividerColor) {
-    ctx.strokeStyle = designPreset.dividerColor;
+  if (dividerColor) {
+    ctx.strokeStyle = dividerColor;
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(sideMargin + 15, footerStartY);
@@ -490,81 +555,540 @@ export async function composeBasePhotoStrip(photos, options = {}) {
   }
 
   // Date Stamp in Special Elite font
-  ctx.fillStyle = designPreset.textColor;
+  ctx.fillStyle = textColor;
   ctx.font = '13px "Special Elite", "Courier New", monospace';
   ctx.letterSpacing = '1.5px';
   ctx.fillText(`• ${dateText.toUpperCase()} •`, stripWidth / 2, widthPreset.dateY);
 
   // Vintage Arcade Mark in Bebas Neue font
-  ctx.fillStyle = designPreset.arcadeColor;
+  ctx.fillStyle = arcadeColor;
   ctx.font = 'bold 11px "Bebas Neue", sans-serif';
   ctx.letterSpacing = '2.5px';
   ctx.fillText('THE VINTAGE BOOTH • NO. 44', stripWidth / 2, widthPreset.arcadeY);
 
   ctx.restore();
 
-  // Cache the composed base canvas
-  composedBaseCanvasCache.set(cacheKey, canvas);
-
   return canvas;
 }
 
 /**
- * Instantly renders the final photo strip with the latest caption text.
- * Runs in ~2ms without reloading any images or flickering.
+ * Renders the final photo strip canvas with the latest caption text.
+ * Returns the HTMLCanvasElement directly for high-resolution Blob export.
  *
- * @param {HTMLCanvasElement} baseCanvas - Cached canvas from composeBasePhotoStrip
+ * @param {HTMLCanvasElement} baseCanvas - Canvas from composeBasePhotoStrip
  * @param {string} caption - Current user-entered caption
- * @param {Object} options - { designId, widthId }
- * @returns {string} dataUrl of final PNG
+ * @param {Object} options - { designId, solidColorId, widthId }
+ * @returns {HTMLCanvasElement|null}
  */
-export function renderFinalPhotoStrip(baseCanvas, caption = '', options = {}) {
-  if (!baseCanvas) return '';
+export function renderFinalPhotoStripCanvas(baseCanvas, caption = '', options = {}) {
+  if (!baseCanvas) return null;
 
   const {
     designId = 'classic_cream',
+    solidColorId = 'black',
     widthId = 'wide'
   } = options;
 
   const widthPreset = STRIP_WIDTH_PRESETS[widthId] || STRIP_WIDTH_PRESETS.wide;
   const designPreset = STRIP_DESIGNS.find((d) => d.id === designId) || STRIP_DESIGNS[0];
+  const solidColorPreset = SOLID_COLOR_PALETTE.find((c) => c.id === solidColorId) || SOLID_COLOR_PALETTE[0];
 
   const finalCanvas = document.createElement('canvas');
   finalCanvas.width = baseCanvas.width;
   finalCanvas.height = baseCanvas.height;
   const ctx = finalCanvas.getContext('2d');
 
-  if (!ctx) return '';
+  if (!ctx) return null;
 
-  // 1. Draw cached base strip (paper, pattern, 4 photos, static footer)
+  // 1. Draw base strip (paper, pattern, 4 photos, static footer)
   ctx.drawImage(baseCanvas, 0, 0);
 
-  // 2. Draw live caption in Special Elite font with design's caption color
+  // 2. Draw live caption in Special Elite font with design/solid color's caption color
   const trimmed = (caption || '').trim();
   if (trimmed.length > 0) {
+    const isSolid = designPreset.id === 'solid_colors';
+    const captionColor = isSolid ? solidColorPreset.captionColor : designPreset.captionColor;
+
     ctx.save();
     ctx.textAlign = 'center';
-    ctx.fillStyle = designPreset.captionColor;
+    ctx.fillStyle = captionColor;
     ctx.font = '15px "Special Elite", "Courier New", monospace';
     ctx.letterSpacing = '1px';
     ctx.fillText(trimmed, finalCanvas.width / 2, widthPreset.captionY);
     ctx.restore();
   }
 
-  return finalCanvas.toDataURL('image/png');
+  return finalCanvas;
 }
 
 /**
- * Triggers a browser download directly without a backend
- * @param {string} dataUrl
- * @param {string} filename
+ * Instantly renders the final photo strip with the latest caption text as dataUrl.
+ *
+ * @param {HTMLCanvasElement} baseCanvas - Canvas from composeBasePhotoStrip
+ * @param {string} caption - Current user-entered caption
+ * @param {Object} options - { designId, solidColorId, widthId }
+ * @returns {string} dataUrl of final PNG
  */
-export function triggerBrowserDownload(dataUrl, filename) {
-  if (!dataUrl) return;
+export function renderFinalPhotoStrip(baseCanvas, caption = '', options = {}) {
+  const canvas = renderFinalPhotoStripCanvas(baseCanvas, caption, options);
+  return canvas ? canvas.toDataURL('image/png') : '';
+}
+
+/**
+ * Converts a base64 data URL to a native binary Blob
+ * @param {string} dataUrl
+ * @returns {Blob|null}
+ */
+export function dataUrlToBlob(dataUrl) {
+  if (!dataUrl || typeof dataUrl !== 'string') return null;
+  try {
+    const parts = dataUrl.split(',');
+    if (parts.length < 2) return null;
+    const mimeMatch = parts[0].match(/:(.*?);/);
+    const mime = mimeMatch ? mimeMatch[1] : 'image/png';
+    const binary = atob(parts[1]);
+    const len = binary.length;
+    const u8arr = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      u8arr[i] = binary.charCodeAt(i);
+    }
+    return new Blob([u8arr], { type: mime });
+  } catch (err) {
+    console.error('Error converting data URL to Blob:', err);
+    return null;
+  }
+}
+
+/**
+ * Triggers a real browser file download using native Blob object URLs
+ * to ensure downloads work across all browsers without Chromium data-URL blocks.
+ *
+ * @param {Blob|string|HTMLCanvasElement} source - Blob, Canvas element, or data/blob URL
+ * @param {string} filename - Target filename (e.g. vintage-booth-strip.png)
+ */
+export function triggerBrowserDownload(source, filename) {
+  if (!source) {
+    console.warn('triggerBrowserDownload called with empty source');
+    return;
+  }
+
+  // Case 1: HTMLCanvasElement directly -> use native toBlob()
+  if (typeof HTMLCanvasElement !== 'undefined' && source instanceof HTMLCanvasElement) {
+    source.toBlob((blob) => {
+      if (blob) {
+        downloadBlobInstance(blob, filename);
+      } else {
+        const dataUrl = source.toDataURL('image/png');
+        const fallbackBlob = dataUrlToBlob(dataUrl);
+        if (fallbackBlob) {
+          downloadBlobInstance(fallbackBlob, filename);
+        } else {
+          downloadAnchorUrl(dataUrl, filename);
+        }
+      }
+    }, 'image/png');
+    return;
+  }
+
+  // Case 2: Blob directly
+  if (typeof Blob !== 'undefined' && source instanceof Blob) {
+    downloadBlobInstance(source, filename);
+    return;
+  }
+
+  // Case 3: string URL (data: or blob: or http:)
+  if (typeof source === 'string') {
+    if (source.startsWith('data:')) {
+      const blob = dataUrlToBlob(source);
+      if (blob) {
+        downloadBlobInstance(blob, filename);
+      } else {
+        downloadAnchorUrl(source, filename);
+      }
+    } else {
+      downloadAnchorUrl(source, filename);
+    }
+  }
+}
+
+/**
+ * Downloads a Blob instance via Object URL with reliable cleanup
+ */
+function downloadBlobInstance(blob, filename) {
+  const objectUrl = URL.createObjectURL(blob);
   const link = document.createElement('a');
-  link.href = dataUrl;
+  link.href = objectUrl;
   link.download = filename;
+  link.style.position = 'fixed';
+  link.style.left = '-9999px';
+  link.style.top = '-9999px';
+  link.style.opacity = '0';
   document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+
+  link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+
+  setTimeout(() => {
+    if (link.parentNode) {
+      document.body.removeChild(link);
+    }
+    URL.revokeObjectURL(objectUrl);
+  }, 2500);
+}
+
+/**
+ * Fallback anchor download for existing URLs
+ */
+function downloadAnchorUrl(url, filename) {
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.style.position = 'fixed';
+  link.style.left = '-9999px';
+  link.style.top = '-9999px';
+  link.style.opacity = '0';
+  document.body.appendChild(link);
+
+  link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+
+  setTimeout(() => {
+    if (link.parentNode) {
+      document.body.removeChild(link);
+    }
+  }, 2000);
+}
+
+/**
+ * Draws an image or video frame centered and cropped (object-fit: cover) into target rectangle
+ * preserving the exact aspect ratio without distortion.
+ */
+export function drawMediaCover(ctx, media, x, y, w, h) {
+  if (!media) return;
+  const mediaWidth = media.videoWidth || media.naturalWidth || media.width || w;
+  const mediaHeight = media.videoHeight || media.naturalHeight || media.height || h;
+  if (!mediaWidth || !mediaHeight) return;
+
+  const targetRatio = w / h;
+  const mediaRatio = mediaWidth / mediaHeight;
+
+  let sx, sy, sw, sh;
+  if (mediaRatio > targetRatio) {
+    // Media is wider than target: crop left & right
+    sh = mediaHeight;
+    sw = mediaHeight * targetRatio;
+    sx = (mediaWidth - sw) / 2;
+    sy = 0;
+  } else {
+    // Media is taller than target: crop top & bottom
+    sw = mediaWidth;
+    sh = mediaWidth / targetRatio;
+    sx = 0;
+    sy = (mediaHeight - sh) / 2;
+  }
+
+  ctx.drawImage(media, sx, sy, sw, sh, x, y, w, h);
+}
+
+/**
+ * Composes a full animated video photo strip from live video clips and custom design options.
+ *
+ * @param {Array<{ dataUrl: string, id: number }>} photos - Still photos for fallback
+ * @param {Array<{ id: number, blob: Blob, videoUrl: string }>} liveClips - The 4 recorded video clips
+ * @param {Object} options - { designId, widthId, caption, dateText, onProgress }
+ * @returns {Promise<{ blob: Blob, videoUrl: string, mimeType: string, extension: string, filename: string }>}
+ */
+export async function composeLivePhotoStripVideo(photos = [], liveClips = [], options = {}) {
+  const {
+    designId = 'classic_cream',
+    solidColorId = 'black',
+    widthId = 'wide',
+    caption = '',
+    dateText = getFormattedVintageDate(),
+    onProgress
+  } = options;
+
+  const widthPreset = STRIP_WIDTH_PRESETS[widthId] || STRIP_WIDTH_PRESETS.wide;
+  const designPreset = STRIP_DESIGNS.find((d) => d.id === designId) || STRIP_DESIGNS[0];
+  const solidColorPreset = SOLID_COLOR_PALETTE.find((c) => c.id === solidColorId) || SOLID_COLOR_PALETTE[0];
+  const stripWidth = widthPreset.width;
+  const stripHeight = widthPreset.height;
+
+  const isSolid = designPreset.id === 'solid_colors';
+  const paperColor = isSolid ? solidColorPreset.hex : designPreset.paperColor;
+  const photoBorder = isSolid ? solidColorPreset.photoBorder : designPreset.photoBorder;
+  const dividerColor = isSolid ? solidColorPreset.dividerColor : designPreset.dividerColor;
+  const textColor = isSolid ? solidColorPreset.textColor : designPreset.textColor;
+  const arcadeColor = isSolid ? solidColorPreset.arcadeColor : designPreset.arcadeColor;
+  const captionColor = isSolid ? solidColorPreset.captionColor : designPreset.captionColor;
+
+  // 1. Build Background Template Canvas (Paper, pattern, grain, borders, footer, caption)
+  const templateCanvas = document.createElement('canvas');
+  templateCanvas.width = stripWidth;
+  templateCanvas.height = stripHeight;
+  const tCtx = templateCanvas.getContext('2d');
+  if (!tCtx) {
+    throw new Error('Unable to create canvas context for video strip composition');
+  }
+
+  // Paper background
+  tCtx.fillStyle = paperColor;
+  tCtx.fillRect(0, 0, stripWidth, stripHeight);
+
+  // Decorative patterns
+  if (designPreset.patternType === 'polka_dots') {
+    drawPolkaDots(tCtx, stripWidth, stripHeight);
+  } else if (designPreset.patternType === 'little_hearts') {
+    drawLittleHeartsPattern(tCtx, stripWidth, stripHeight);
+  } else if (designPreset.patternType === 'starry') {
+    drawStarryPattern(tCtx, stripWidth, stripHeight);
+  }
+
+  // Paper grain
+  if (designPreset.hasPaperGrain) {
+    drawPaperGrain(tCtx, stripWidth, stripHeight);
+  }
+
+  // Outer border
+  if (designPreset.outerBorder && !isSolid) {
+    tCtx.strokeStyle = designPreset.outerBorder;
+    tCtx.lineWidth = 1;
+    tCtx.strokeRect(10, 10, stripWidth - 20, stripHeight - 20);
+  } else if (isSolid && solidColorPreset.dividerColor) {
+    tCtx.strokeStyle = solidColorPreset.dividerColor;
+    tCtx.lineWidth = 1;
+    tCtx.strokeRect(8, 8, stripWidth - 16, stripHeight - 16);
+  }
+
+  // Footer static elements
+  tCtx.save();
+  tCtx.textAlign = 'center';
+
+  if (dividerColor) {
+    tCtx.strokeStyle = dividerColor;
+    tCtx.lineWidth = 1;
+    tCtx.beginPath();
+    tCtx.moveTo(widthPreset.sideMargin + 15, widthPreset.footerStartY);
+    tCtx.lineTo(stripWidth - (widthPreset.sideMargin + 15), widthPreset.footerStartY);
+    tCtx.stroke();
+  }
+
+  tCtx.fillStyle = textColor;
+  tCtx.font = '13px "Special Elite", "Courier New", monospace';
+  tCtx.letterSpacing = '1.5px';
+  tCtx.fillText(`• ${dateText.toUpperCase()} •`, stripWidth / 2, widthPreset.dateY);
+
+  tCtx.fillStyle = arcadeColor;
+  tCtx.font = 'bold 11px "Bebas Neue", sans-serif';
+  tCtx.letterSpacing = '2.5px';
+  tCtx.fillText('THE VINTAGE BOOTH • NO. 44', stripWidth / 2, widthPreset.arcadeY);
+
+  const trimmed = (caption || '').trim();
+  if (trimmed.length > 0) {
+    tCtx.fillStyle = captionColor;
+    tCtx.font = '15px "Special Elite", "Courier New", monospace';
+    tCtx.letterSpacing = '1px';
+    tCtx.fillText(trimmed, stripWidth / 2, widthPreset.captionY);
+  }
+  tCtx.restore();
+
+  // 2. Prepare Video Elements for each of the 4 slots
+  const fallbackImages = [];
+  for (let i = 0; i < 4; i++) {
+    if (photos && photos[i] && photos[i].dataUrl) {
+      try {
+        const img = await loadImage(photos[i].dataUrl);
+        fallbackImages[i] = img;
+      } catch {
+        fallbackImages[i] = null;
+      }
+    }
+  }
+
+  const videoElements = [];
+  const tempObjectUrls = [];
+  const videoPromises = [];
+
+  for (let i = 0; i < 4; i++) {
+    const photoId = i + 1;
+    const clip = (liveClips || []).find((c) => c.id === photoId);
+
+    if (clip && (clip.blob || clip.videoUrl)) {
+      const video = document.createElement('video');
+      video.muted = true;
+      video.playsInline = true;
+      video.loop = true;
+      video.crossOrigin = 'anonymous';
+
+      let src = clip.videoUrl;
+      if (!src && clip.blob) {
+        src = URL.createObjectURL(clip.blob);
+        tempObjectUrls.push(src);
+      }
+      video.src = src;
+
+      const p = new Promise((resolve) => {
+        let isDone = false;
+        const done = () => {
+          if (!isDone) {
+            isDone = true;
+            video.removeEventListener('loadeddata', done);
+            video.removeEventListener('canplay', done);
+            video.removeEventListener('error', done);
+            resolve(video);
+          }
+        };
+        video.addEventListener('loadeddata', done);
+        video.addEventListener('canplay', done);
+        video.addEventListener('error', done);
+        setTimeout(done, 2000); // 2s safety timeout
+      });
+
+      videoElements.push(video);
+      videoPromises.push(p);
+      video.load();
+    } else {
+      videoElements.push(null);
+      videoPromises.push(Promise.resolve(null));
+    }
+  }
+
+  await Promise.all(videoPromises);
+
+  // 3. Setup Recording Canvas & MediaRecorder
+  const recordCanvas = document.createElement('canvas');
+  recordCanvas.width = stripWidth;
+  recordCanvas.height = stripHeight;
+  const rCtx = recordCanvas.getContext('2d');
+  if (!rCtx) {
+    throw new Error('Canvas 2D context unavailable for video recording');
+  }
+
+  if (!recordCanvas.captureStream) {
+    throw new Error('Canvas captureStream is not supported by this browser');
+  }
+
+  const stream = recordCanvas.captureStream(30); // 30 FPS
+  const mimeType = getSupportedVideoMimeType() || 'video/webm';
+  const extension = getVideoFileExtension(mimeType);
+
+  let recorder;
+  try {
+    recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 4500000 });
+  } catch {
+    try {
+      recorder = new MediaRecorder(stream, { mimeType });
+    } catch {
+      recorder = new MediaRecorder(stream);
+    }
+  }
+
+  const recordedChunks = [];
+  recorder.ondataavailable = (e) => {
+    if (e.data && e.data.size > 0) {
+      recordedChunks.push(e.data);
+    }
+  };
+
+  // 4. Play all videos from start and run recording loop
+  for (const v of videoElements) {
+    if (v) {
+      try {
+        v.currentTime = 0;
+        await v.play().catch(() => {});
+      } catch {}
+    }
+  }
+
+  const durationMs = 3000;
+  const startTime = performance.now();
+  let animId = null;
+
+  return new Promise((resolve, reject) => {
+    recorder.onstop = () => {
+      // Pause and clean up video elements
+      videoElements.forEach((v) => {
+        if (v) {
+          try {
+            v.pause();
+            v.src = '';
+            v.load();
+          } catch {}
+        }
+      });
+      tempObjectUrls.forEach((u) => {
+        try { URL.revokeObjectURL(u); } catch {}
+      });
+
+      const finalMime = recorder.mimeType || mimeType;
+      const finalExt = getVideoFileExtension(finalMime);
+      const videoBlob = new Blob(recordedChunks, { type: finalMime });
+      const videoUrl = URL.createObjectURL(videoBlob);
+      const designSlug = designId === 'solid_colors' ? `solid-${solidColorId}` : designId;
+      const filename = `vintage-booth-live-strip-${designSlug}-${widthId}.${finalExt}`;
+
+      resolve({
+        blob: videoBlob,
+        videoUrl,
+        mimeType: finalMime,
+        extension: finalExt,
+        filename
+      });
+    };
+
+    recorder.onerror = (err) => {
+      if (animId) cancelAnimationFrame(animId);
+      reject(err);
+    };
+
+    recorder.start(100);
+
+    function step(now) {
+      const elapsed = now - startTime;
+      if (onProgress) {
+        const pct = Math.min(100, Math.round((elapsed / durationMs) * 100));
+        onProgress(pct);
+      }
+
+      // Base background template
+      rCtx.drawImage(templateCanvas, 0, 0);
+
+      // Draw 4 photo frames
+      for (let i = 0; i < 4; i++) {
+        const slotX = widthPreset.sideMargin;
+        const slotY = widthPreset.topMargin + i * (widthPreset.photoHeight + widthPreset.photoGap);
+        const slotW = widthPreset.photoWidth;
+        const slotH = widthPreset.photoHeight;
+
+        rCtx.save();
+        rCtx.shadowColor = isSolid && solidColorPreset.isDark ? 'rgba(0, 0, 0, 0.45)' : 'rgba(40, 6, 12, 0.14)';
+        rCtx.shadowBlur = 6;
+        rCtx.shadowOffsetY = 2;
+
+        const v = videoElements[i];
+        if (v && v.readyState >= 2) {
+          drawMediaCover(rCtx, v, slotX, slotY, slotW, slotH);
+        } else if (fallbackImages[i]) {
+          rCtx.drawImage(fallbackImages[i], slotX, slotY, slotW, slotH);
+        }
+        rCtx.restore();
+
+        // Emulsion photo border
+        if (photoBorder) {
+          rCtx.strokeStyle = photoBorder;
+          rCtx.lineWidth = isSolid ? 2 : 1;
+          rCtx.strokeRect(slotX, slotY, slotW, slotH);
+        }
+      }
+
+      if (elapsed < durationMs) {
+        animId = requestAnimationFrame(step);
+      } else {
+        cancelAnimationFrame(animId);
+        if (recorder.state !== 'inactive') {
+          recorder.stop();
+        }
+      }
+    }
+
+    animId = requestAnimationFrame(step);
+  });
 }

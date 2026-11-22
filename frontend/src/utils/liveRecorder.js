@@ -23,11 +23,11 @@ export function getSupportedVideoMimeType() {
   if (!isMediaRecorderSupported()) return null;
 
   const candidateTypes = [
+    'video/mp4;codecs=avc1',
+    'video/mp4',
     'video/webm;codecs=vp9',
     'video/webm;codecs=vp8',
-    'video/webm',
-    'video/mp4;codecs=avc1',
-    'video/mp4'
+    'video/webm'
   ];
 
   for (const type of candidateTypes) {
@@ -47,7 +47,7 @@ export function getSupportedVideoMimeType() {
  * Get recommended file extension based on MIME type
  */
 export function getVideoFileExtension(mimeType) {
-  if (mimeType && mimeType.includes('mp4')) {
+  if (mimeType && mimeType.toLowerCase().includes('mp4')) {
     return 'mp4';
   }
   return 'webm';
@@ -56,16 +56,44 @@ export function getVideoFileExtension(mimeType) {
 /**
  * Trigger download of a video blob or object URL
  */
-export function triggerVideoDownload(url, filename) {
+export function triggerVideoDownload(blobOrUrl, filename) {
+  if (!blobOrUrl) {
+    console.warn('triggerVideoDownload called with empty blob/url');
+    return;
+  }
+
+  let objectUrl = null;
+  let downloadUrl = '';
+
+  if (typeof Blob !== 'undefined' && blobOrUrl instanceof Blob) {
+    objectUrl = URL.createObjectURL(blobOrUrl);
+    downloadUrl = objectUrl;
+  } else if (typeof blobOrUrl === 'string') {
+    downloadUrl = blobOrUrl;
+  } else {
+    console.warn('triggerVideoDownload: unsupported source type', blobOrUrl);
+    return;
+  }
+
   const link = document.createElement('a');
-  link.href = url;
+  link.href = downloadUrl;
   link.download = filename;
-  link.style.display = 'none';
+  link.style.position = 'fixed';
+  link.style.left = '-9999px';
+  link.style.top = '-9999px';
+  link.style.opacity = '0';
   document.body.appendChild(link);
-  link.click();
+
+  link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+
   setTimeout(() => {
-    document.body.removeChild(link);
-  }, 200);
+    if (link.parentNode) {
+      document.body.removeChild(link);
+    }
+    if (objectUrl) {
+      URL.revokeObjectURL(objectUrl);
+    }
+  }, 4000);
 }
 
 /**
@@ -112,6 +140,16 @@ function getMockAnimatedStream(filter, photoIndex) {
     const w = mockAnimCanvas.width;
     const h = mockAnimCanvas.height;
 
+    ctx.save();
+    // Apply selected retro filter (Soft B&W or Golden Hour) directly to mock canvas
+    if (filter && filter.cssFilter) {
+      try {
+        ctx.filter = filter.cssFilter;
+      } catch {}
+    } else {
+      ctx.filter = 'none';
+    }
+
     // Background gradient
     ctx.fillStyle = '#2b0c14';
     ctx.fillRect(0, 0, w, h);
@@ -125,7 +163,7 @@ function getMockAnimatedStream(filter, photoIndex) {
     // Subtle breathing/bobbing motion
     const bob = Math.sin(elapsed * 4) * 6;
 
-    // Portrait Silhouette
+    // Portrait Silhouette (horizontally unflipped, natural orientation)
     ctx.save();
     ctx.translate(w / 2, h / 2 + bob);
 
@@ -172,13 +210,17 @@ function getMockAnimatedStream(filter, photoIndex) {
     ctx.font = 'bold 16px monospace';
     ctx.fillText(`TEST FEED • LIVE POSE ${photoIndex}`, 20, 36);
 
+    ctx.restore();
+
     mockAnimFrameId = requestAnimationFrame(renderMockFrame);
   }
 
   renderMockFrame();
 
-  if (!mockAnimStream && mockAnimCanvas.captureStream) {
-    mockAnimStream = mockAnimCanvas.captureStream(30);
+  if (!mockAnimStream || (mockAnimStream.active === false)) {
+    if (mockAnimCanvas.captureStream) {
+      mockAnimStream = mockAnimCanvas.captureStream(30);
+    }
   }
 
   return mockAnimStream;
@@ -194,42 +236,104 @@ class LivePhotoManager {
     this.activePhotoIndex = null;
     this.recordingStartTime = null;
     this.isRecording = false;
+    this.recordCanvas = null;
+    this.animFrameId = null;
+    this.activeStream = null;
   }
 
   /**
-   * Start recording pre-shutter footage (~1.5s before shutter)
+   * Start recording pre-shutter footage (~1.5s before shutter) with the selected filter
+   * applied and in natural, horizontally unflipped orientation.
    */
-  startRecording({ stream, isMock, photoIndex, activeFilter }) {
+  startRecording({ stream, videoElement, isMock, photoIndex, activeFilter }) {
     if (!isMediaRecorderSupported()) {
       console.warn('MediaRecorder unsupported in this browser; Live Photo skipped.');
       return false;
     }
 
-    // Cancel any stale recorder
+    // Cancel any ongoing recording
     this.cancel();
 
-    let targetStream = stream;
-    if (isMock || !targetStream) {
+    let targetStream = null;
+
+    if (isMock || !videoElement || videoElement.readyState < 2) {
       targetStream = getMockAnimatedStream(activeFilter, photoIndex);
+    } else {
+      // Process live camera frames through Canvas with the selected filter
+      if (!this.recordCanvas) {
+        this.recordCanvas = document.createElement('canvas');
+        this.recordCanvas.width = 640;
+        this.recordCanvas.height = 480;
+      }
+      const canvas = this.recordCanvas;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return false;
+
+      const filterStr = activeFilter?.cssFilter || 'none';
+      const targetAspect = 4 / 3;
+
+      this.isRecording = true;
+
+      const renderLiveFrame = () => {
+        if (!this.isRecording) return;
+
+        ctx.save();
+        // 1. Consistently apply selected filter throughout pre- and post-shutter
+        try {
+          ctx.filter = filterStr;
+        } catch {
+          ctx.filter = 'none';
+        }
+
+        // 2. Horizontally UNFLIPPED (natural camera orientation, no scale(-1, 1))
+        const vw = videoElement.videoWidth || 640;
+        const vh = videoElement.videoHeight || 480;
+        const videoAspect = vw / vh;
+        let sx = 0, sy = 0, sw = vw, sh = vh;
+        if (videoAspect > targetAspect) {
+          sw = vh * targetAspect;
+          sx = (vw - sw) / 2;
+        } else {
+          sh = vw / targetAspect;
+          sy = (vh - sh) / 2;
+        }
+
+        ctx.drawImage(videoElement, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+        ctx.restore();
+
+        this.animFrameId = requestAnimationFrame(renderLiveFrame);
+      };
+
+      // Start the frame loop
+      renderLiveFrame();
+
+      if (canvas.captureStream) {
+        targetStream = canvas.captureStream(30);
+      } else {
+        targetStream = stream;
+      }
     }
 
     if (!targetStream) {
       console.warn('No media stream available for Live Photo recording.');
+      this.cancel();
       return false;
     }
 
+    this.activeStream = targetStream;
     const mimeType = getSupportedVideoMimeType();
-    const options = mimeType ? { mimeType } : undefined;
+    const options = mimeType ? { mimeType, videoBitsPerSecond: 3500000 } : undefined;
 
     try {
       this.currentRecorder = new MediaRecorder(targetStream, options);
     } catch (err) {
-      console.warn('Failed to initialize MediaRecorder:', err);
+      console.warn('Failed to initialize MediaRecorder with options:', err);
       try {
         // Fallback without options
         this.currentRecorder = new MediaRecorder(targetStream);
       } catch (fallbackErr) {
         console.error('MediaRecorder completely unavailable:', fallbackErr);
+        this.cancel();
         return false;
       }
     }
@@ -251,7 +355,7 @@ class LivePhotoManager {
       return true;
     } catch (startErr) {
       console.warn('Error starting MediaRecorder:', startErr);
-      this.isRecording = false;
+      this.cancel();
       return false;
     }
   }
@@ -289,14 +393,18 @@ class LivePhotoManager {
       recorder.onstop = () => {
         clearTimeout(safetyTimer);
         try {
-          const blob = new Blob(this.recordedChunks, { type: mimeType });
-          const videoUrl = URL.createObjectURL(blob);
-          const duration = (Date.now() - (this.recordingStartTime || Date.now())) / 1000;
-
+          if (this.animFrameId) {
+            cancelAnimationFrame(this.animFrameId);
+            this.animFrameId = null;
+          }
           if (mockAnimFrameId) {
             cancelAnimationFrame(mockAnimFrameId);
             mockAnimFrameId = null;
           }
+
+          const blob = new Blob(this.recordedChunks, { type: mimeType });
+          const videoUrl = URL.createObjectURL(blob);
+          const duration = (Date.now() - (this.recordingStartTime || Date.now())) / 1000;
 
           this.currentRecorder = null;
           this.recordedChunks = [];
@@ -339,6 +447,10 @@ class LivePhotoManager {
       } catch {
         // Ignore
       }
+    }
+    if (this.animFrameId) {
+      cancelAnimationFrame(this.animFrameId);
+      this.animFrameId = null;
     }
     if (mockAnimFrameId) {
       cancelAnimationFrame(mockAnimFrameId);
