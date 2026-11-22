@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function HeaderBar({ isMuted, onToggleMute }) {
+export default function HeaderBar({ isMuted, onToggleMute, onOpenMemories }) {
   return (
     <header className="retro-header">
       <div className="header-brand">
@@ -10,6 +10,19 @@ export default function HeaderBar({ isMuted, onToggleMute }) {
       </div>
 
       <div className="header-actions">
+        {onOpenMemories && (
+          <button
+            type="button"
+            onClick={onOpenMemories}
+            className="header-memories-btn"
+            title="Open My Memories Album"
+            aria-label="Open My Memories Album"
+          >
+            <span className="memories-icon">📖</span>
+            <span className="memories-label">MY MEMORIES</span>
+          </button>
+        )}
+
         <button
           type="button"
           onClick={onToggleMute}

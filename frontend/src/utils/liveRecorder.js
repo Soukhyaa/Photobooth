@@ -23,11 +23,11 @@ export function getSupportedVideoMimeType() {
   if (!isMediaRecorderSupported()) return null;
 
   const candidateTypes = [
-    'video/mp4;codecs=avc1',
-    'video/mp4',
-    'video/webm;codecs=vp9',
     'video/webm;codecs=vp8',
-    'video/webm'
+    'video/webm;codecs=vp9',
+    'video/webm',
+    'video/mp4;codecs=avc1',
+    'video/mp4'
   ];
 
   for (const type of candidateTypes) {
@@ -239,6 +239,96 @@ class LivePhotoManager {
     this.recordCanvas = null;
     this.animFrameId = null;
     this.activeStream = null;
+    this.canvasStream = null;
+    this.isWarmedUp = false;
+  }
+
+  /**
+   * Stop canvas capture stream tracks cleanly without touching the real camera stream
+   */
+  stopCanvasStream() {
+    if (this.canvasStream) {
+      try {
+        this.canvasStream.getTracks().forEach((track) => {
+          try {
+            track.stop();
+          } catch {}
+        });
+      } catch {}
+      this.canvasStream = null;
+    }
+    this.activeStream = null;
+  }
+
+  /**
+   * Pre-warm canvas and MediaRecorder encoding pipeline ahead of countdown.
+   * Discards all warm-up output and stops dummy stream tracks cleanly.
+   */
+  warmUp({ activeFilter, videoElement } = {}) {
+    if (!isMediaRecorderSupported() || this.isWarmedUp || this.isRecording) return;
+    try {
+      if (!this.recordCanvas) {
+        this.recordCanvas = document.createElement('canvas');
+        this.recordCanvas.width = 640;
+        this.recordCanvas.height = 480;
+      }
+      const canvas = this.recordCanvas;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      const filterStr = activeFilter?.cssFilter || 'none';
+      try {
+        ctx.filter = filterStr;
+      } catch {
+        ctx.filter = 'none';
+      }
+
+      if (videoElement && videoElement.readyState >= 2) {
+        try {
+          ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+        } catch {}
+      } else {
+        ctx.fillStyle = '#1e050b';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+
+      if (canvas.captureStream) {
+        const dummyStream = canvas.captureStream(30);
+        const mimeType = getSupportedVideoMimeType();
+        const options = mimeType ? { mimeType, videoBitsPerSecond: 1000000 } : undefined;
+        let warmRecorder = null;
+        try {
+          warmRecorder = options ? new MediaRecorder(dummyStream, options) : new MediaRecorder(dummyStream);
+        } catch {
+          warmRecorder = new MediaRecorder(dummyStream);
+        }
+        warmRecorder.ondataavailable = () => {};
+        warmRecorder.onstop = () => {
+          try {
+            dummyStream.getTracks().forEach((t) => {
+              try { t.stop(); } catch {}
+            });
+          } catch {}
+        };
+        try {
+          warmRecorder.start();
+          setTimeout(() => {
+            try {
+              if (warmRecorder && warmRecorder.state !== 'inactive') {
+                warmRecorder.stop();
+              }
+            } catch {}
+          }, 30);
+        } catch {
+          dummyStream.getTracks().forEach((t) => {
+            try { t.stop(); } catch {}
+          });
+        }
+      }
+      this.isWarmedUp = true;
+    } catch (e) {
+      console.warn('LivePhotoManager warm-up notice (non-fatal):', e);
+    }
   }
 
   /**
@@ -251,13 +341,14 @@ class LivePhotoManager {
       return false;
     }
 
-    // Cancel any ongoing recording
+    // Cancel any ongoing recording and clean previous canvas streams
     this.cancel();
 
     let targetStream = null;
 
     if (isMock || !videoElement || videoElement.readyState < 2) {
       targetStream = getMockAnimatedStream(activeFilter, photoIndex);
+      this.canvasStream = targetStream;
     } else {
       // Process live camera frames through Canvas with the selected filter
       if (!this.recordCanvas) {
@@ -309,8 +400,10 @@ class LivePhotoManager {
 
       if (canvas.captureStream) {
         targetStream = canvas.captureStream(30);
+        this.canvasStream = targetStream;
       } else {
         targetStream = stream;
+        this.canvasStream = null;
       }
     }
 
@@ -410,6 +503,9 @@ class LivePhotoManager {
           this.recordedChunks = [];
           this.isRecording = false;
 
+          // Stop canvas stream tracks only AFTER final data blob is packaged
+          this.stopCanvasStream();
+
           resolve({
             id: photoId,
             blob,
@@ -460,6 +556,7 @@ class LivePhotoManager {
     this.recordedChunks = [];
     this.activePhotoIndex = null;
     this.isRecording = false;
+    this.stopCanvasStream();
   }
 }
 

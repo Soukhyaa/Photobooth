@@ -14,6 +14,7 @@ import {
   getVideoFileExtension
 } from '../utils/liveRecorder';
 import { soundEngine } from '../utils/audio';
+import { saveMemory, dataUrlToBlob } from '../utils/api';
 
 export default function PhotoStripPreview({
   capturedPhotos = [],
@@ -35,6 +36,15 @@ export default function PhotoStripPreview({
   const [activePlayingPhotoId, setActivePlayingPhotoId] = useState(null);
   const [isGeneratingVideoStrip, setIsGeneratingVideoStrip] = useState(false);
   const [videoProgressText, setVideoProgressText] = useState('');
+  const [isSavingToMemories, setIsSavingToMemories] = useState(false);
+  const [isSavedToMemories, setIsSavedToMemories] = useState(false);
+  const [saveStatusMessage, setSaveStatusMessage] = useState('');
+
+  // Reset saved status if customization settings change
+  useEffect(() => {
+    setIsSavedToMemories(false);
+    setSaveStatusMessage('');
+  }, [selectedDesignId, selectedSolidColorId, selectedWidthId, caption]);
 
   const isComposingBase = isRecomposingStrip || !baseStripUrl;
 
@@ -259,6 +269,78 @@ export default function PhotoStripPreview({
   const handleToggleLiveFrame = (photoId) => {
     soundEngine.playBeep(false);
     setActivePlayingPhotoId((prev) => (prev === photoId ? null : photoId));
+  };
+
+  // 9. Save to My Memories (Opt-in persistence to local backend)
+  const handleSaveToMemories = async () => {
+    if (isSavingToMemories || isSavedToMemories) return;
+    setIsSavingToMemories(true);
+    setSaveStatusMessage('Composing & preserving memory...');
+    setDownloadNotice('💾 Preserving photo strip in My Memories...');
+
+    try {
+      // 1. Compose the finalized canvas with the custom caption
+      const baseCanvas = await composeBasePhotoStrip(capturedPhotos, {
+        designId: selectedDesignId,
+        solidColorId: selectedSolidColorId,
+        widthId: selectedWidthId,
+        dateText: getFormattedVintageDate()
+      });
+
+      const finalCanvas = renderFinalPhotoStripCanvas(baseCanvas, caption, {
+        designId: selectedDesignId,
+        solidColorId: selectedSolidColorId,
+        widthId: selectedWidthId
+      });
+
+      const stripBlob = await new Promise((resolve, reject) => {
+        finalCanvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Canvas conversion failed'))), 'image/png');
+      });
+
+      // 2. Convert original still photos to Blobs
+      const photoBlobs = (capturedPhotos || []).map((p) => dataUrlToBlob(p.dataUrl));
+
+      // 3. Extract optional Live Photo clip Blobs if available
+      const liveClipBlobs = [];
+      if (captureMode === 'live' && liveClips && liveClips.length > 0) {
+        for (let i = 1; i <= 4; i++) {
+          const c = liveClips.find((clip) => clip.id === i);
+          if (c && c.blob) {
+            liveClipBlobs.push(c.blob);
+          }
+        }
+      }
+
+      // 4. Send to backend API
+      await saveMemory({
+        stripBlob,
+        photoBlobs,
+        liveClips: liveClipBlobs,
+        metadata: {
+          caption,
+          date_text: getFormattedVintageDate(),
+          design_id: selectedDesignId,
+          solid_color_id: selectedSolidColorId,
+          width_id: selectedWidthId,
+          filter_id: selectedFilter?.id,
+          capture_mode: captureMode
+        }
+      });
+
+      setIsSavedToMemories(true);
+      setSaveStatusMessage('✓ Saved to My Memories! Access anytime via the header.');
+      setDownloadNotice('✓ Photo strip saved to your private album!');
+      soundEngine.playTrayDrop?.();
+      setTimeout(() => setDownloadNotice(''), 4500);
+    } catch (err) {
+      console.error('Error saving to memories:', err);
+      const errorMsg = err?.message || 'Could not save memory. Please verify backend.';
+      setSaveStatusMessage(`⚠️ ${errorMsg}`);
+      setDownloadNotice('⚠️ Could not save to memories. Your session is safe.');
+      setTimeout(() => setDownloadNotice(''), 4500);
+    } finally {
+      setIsSavingToMemories(false);
+    }
   };
 
   const activeWidthPreset = STRIP_WIDTH_PRESETS[selectedWidthId] || STRIP_WIDTH_PRESETS.wide;
@@ -524,6 +606,42 @@ export default function PhotoStripPreview({
 
           {/* Download & Save Controls */}
           <div className="strip-action-buttons">
+            {/* Retro Save to My Memories Action (Opt-in) */}
+            <div className="save-memories-card">
+              <button
+                type="button"
+                className={`strip-btn save-memories-btn ${isSavedToMemories ? 'is-saved' : ''} ${isSavingToMemories ? 'is-saving' : ''}`}
+                onClick={handleSaveToMemories}
+                disabled={isComposingBase || isSavingToMemories || isSavedToMemories}
+                aria-label="Save this photo strip to My Memories"
+              >
+                <div className="save-btn-inner">
+                  <span className="save-btn-icon">{isSavedToMemories ? '✓' : isSavingToMemories ? '⚙️' : '💾'}</span>
+                  <div className="btn-labels">
+                    <span className="main-text">
+                      {isSavedToMemories
+                        ? 'SAVED TO MY MEMORIES'
+                        : isSavingToMemories
+                          ? 'SAVING TO MEMORIES...'
+                          : 'SAVE TO MY MEMORIES'}
+                    </span>
+                    <span className="sub-text">
+                      {isSavedToMemories
+                        ? 'STORED IN YOUR PRIVATE BROWSER ALBUM'
+                        : isSavingToMemories
+                          ? 'UPLOADING TO PRIVATE LOCAL STORAGE...'
+                          : 'KEEP IN YOUR BROWSER ALBUM (7-DAY RETENTION)'}
+                    </span>
+                  </div>
+                </div>
+              </button>
+              {saveStatusMessage && (
+                <div className={`save-status-pill ${isSavedToMemories ? 'is-success' : 'is-error'}`}>
+                  <span>{saveStatusMessage}</span>
+                </div>
+              )}
+            </div>
+
             {/* Primary Download Bay: 3 Choices for Live Photos mode, Single PNG for Still mode */}
             {captureMode === 'live' ? (
               <div className="live-strip-download-group">

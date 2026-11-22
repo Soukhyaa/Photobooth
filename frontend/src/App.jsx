@@ -3,6 +3,7 @@ import HeaderBar from './components/HeaderBar';
 import LandingBooth from './components/LandingBooth';
 import BoothInterior from './components/BoothInterior';
 import CurtainTransition from './components/CurtainTransition';
+import MemoriesDrawer from './components/MemoriesDrawer';
 import { DEFAULT_FILTER } from './utils/filters';
 import { soundEngine } from './utils/audio';
 import './App.css';
@@ -13,6 +14,7 @@ export default function App() {
   const [isCurtainClosed, setIsCurtainClosed] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState(DEFAULT_FILTER);
+  const [isMemoriesOpen, setIsMemoriesOpen] = useState(false);
 
   // Sound mute toggle
   const handleToggleMute = () => {
@@ -56,7 +58,11 @@ export default function App() {
       <div className="film-grain-overlay" aria-hidden="true" />
 
       {/* Retro Navigation Header */}
-      <HeaderBar isMuted={isMuted} onToggleMute={handleToggleMute} />
+      <HeaderBar
+        isMuted={isMuted}
+        onToggleMute={handleToggleMute}
+        onOpenMemories={() => setIsMemoriesOpen(true)}
+      />
 
       {/* Dynamic Stage Render */}
       {stage === 'landing' ? (
@@ -73,6 +79,12 @@ export default function App() {
 
       {/* Dramatic Full-screen Velvet Curtain Transition */}
       <CurtainTransition isOpen={!isCurtainClosed} />
+
+      {/* My Memories Vintage Photo Album Drawer */}
+      <MemoriesDrawer
+        isOpen={isMemoriesOpen}
+        onClose={() => setIsMemoriesOpen(false)}
+      />
     </div>
   );
 }

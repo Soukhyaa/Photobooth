@@ -344,6 +344,10 @@ export default function BoothInterior({
     if (captureState !== 'idle') return;
     soundEngine.playBeep(false);
     setCaptureState('selecting_mode');
+    livePhotoManager.warmUp({
+      activeFilter: activeFilterRef.current,
+      videoElement: videoRef.current
+    });
   };
 
   // Step 3 in sequence: user selects mode ("Still Photos" or "Live Photos")
@@ -356,6 +360,12 @@ export default function BoothInterior({
     revokeLiveClipUrls(liveClipsRef.current);
     setLiveClips([]);
     setCurrentPhotoIndex(1);
+    if (mode === 'live') {
+      livePhotoManager.warmUp({
+        activeFilter: activeFilterRef.current,
+        videoElement: videoRef.current
+      });
+    }
     runCountdownForPhoto(1, []);
   };
 

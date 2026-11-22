@@ -8,6 +8,30 @@ frontend/dist/
 dist-ssr/
 frontend/dist-ssr/
 
+# Python Virtual Environments
+backend/venv/
+backend/.venv/
+venv/
+.venv/
+env/
+ENV/
+
+# Python cache & compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+*.pyo
+*.pyd
+
+# SQLite Database Files
+*.sqlite
+*.sqlite3
+*.db
+
+# Backend Upload & Media Storage
+backend/storage/
+
 # Environment & credentials
 .env
 .env.*
