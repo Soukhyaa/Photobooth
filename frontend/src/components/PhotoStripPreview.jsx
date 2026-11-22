@@ -9,26 +9,33 @@ import { triggerVideoDownload } from '../utils/liveRecorder';
 import { soundEngine } from '../utils/audio';
 
 export default function PhotoStripPreview({
-  capturedPhotos,
+  capturedPhotos = [],
   liveClips = [],
   captureMode = 'still',
-  selectedFilter,
+  selectedFilter = {},
   onRetake,
-  onStripComposed
+  initialBaseStripUrl = null
 }) {
-  const [baseStripUrl, setBaseStripUrl] = useState(null);
-  const [isComposingBase, setIsComposingBase] = useState(true);
+  const [baseStripUrl, setBaseStripUrl] = useState(initialBaseStripUrl || null);
+  const [isComposingBase, setIsComposingBase] = useState(!initialBaseStripUrl);
   const [caption, setCaption] = useState('MEMORIES IN THE BOOTH');
   const [downloadNotice, setDownloadNotice] = useState('');
   const [activePlayingPhotoId, setActivePlayingPhotoId] = useState(null);
 
   const baseCanvasRef = useRef(null);
+  const hasComposedRef = useRef(false);
 
   // 1. Compose the 4-photo base strip ONCE.
-  // The 4 photographs remain completely stable while the user edits the caption.
+  // The 4 photographs, borders, and grain remain completely stationary
+  // while the user edits or deletes caption text in real time.
   useEffect(() => {
+    if (hasComposedRef.current) return;
+    hasComposedRef.current = true;
+
     let isMounted = true;
-    setIsComposingBase(true);
+    if (!baseStripUrl) {
+      setIsComposingBase(true);
+    }
 
     composeBasePhotoStrip(capturedPhotos, {
       dateText: getFormattedVintageDate()
@@ -36,15 +43,10 @@ export default function PhotoStripPreview({
       .then((canvas) => {
         if (!isMounted) return;
         baseCanvasRef.current = canvas;
-        const initialBaseUrl = canvas.toDataURL('image/png');
-        setBaseStripUrl(initialBaseUrl);
-        setIsComposingBase(false);
-
-        // Notify parent with initial complete strip
-        const finalUrl = renderFinalPhotoStrip(canvas, caption);
-        if (onStripComposed) {
-          onStripComposed(finalUrl);
+        if (!baseStripUrl) {
+          setBaseStripUrl(canvas.toDataURL('image/png'));
         }
+        setIsComposingBase(false);
       })
       .catch((err) => {
         console.error('Error composing base photo strip:', err);
@@ -54,17 +56,9 @@ export default function PhotoStripPreview({
     return () => {
       isMounted = false;
     };
-  }, [capturedPhotos, onStripComposed]);
+  }, [capturedPhotos, baseStripUrl]);
 
-  // Keep parent's composed strip in sync when caption changes (without re-rendering base canvas)
-  useEffect(() => {
-    if (baseCanvasRef.current && onStripComposed) {
-      const finalUrl = renderFinalPhotoStrip(baseCanvasRef.current, caption);
-      onStripComposed(finalUrl);
-    }
-  }, [caption, onStripComposed]);
-
-  // 2. Download Composed 600 × 1800 px Photo Strip
+  // 2. Download Composed 600 × 1800 px Photo Strip (Pure Still Photograph Print)
   const handleDownloadStrip = () => {
     if (!baseCanvasRef.current) return;
     soundEngine.playTrayDrop();
@@ -117,7 +111,7 @@ export default function PhotoStripPreview({
     setTimeout(() => setDownloadNotice(''), 3500);
   };
 
-  // 7. Interactive Click-to-Play Live Photo directly on the digital strip
+  // 7. Interactive Click-to-Play Live Photo directly inside the strip photo frame
   const handleToggleLiveFrame = (photoId) => {
     soundEngine.playBeep(false);
     setActivePlayingPhotoId((prev) => (prev === photoId ? null : photoId));
@@ -134,7 +128,7 @@ export default function PhotoStripPreview({
         </div>
         <h2 className="strip-preview-title">Your 4-Pose Photo Strip</h2>
         <p className="strip-preview-sub">
-          Filter: <strong>{selectedFilter.name}</strong> • Standard 2 × 6″ (600 × 1800 px @ 300 DPI)
+          Filter: <strong>{selectedFilter?.name || 'Selected Filter'}</strong> • Standard 2 × 6″ (600 × 1800 px @ 300 DPI)
           {captureMode === 'live' && (
             <span className="live-sub-tag"> • <strong>✦ Live Photos: Click photos on strip to play!</strong></span>
           )}
@@ -189,23 +183,32 @@ export default function PhotoStripPreview({
                         onClick={() => handleToggleLiveFrame(id)}
                         role="button"
                         tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            handleToggleLiveFrame(id);
+                          }
+                        }}
+                        aria-label={`Photo ${id}: ${isPlaying ? 'Stop motion' : 'Play Live Photo motion clip'}`}
                         title={`Pose #${id}: Click to ${isPlaying ? 'pause' : 'play'} Live Photo clip`}
                       >
+                        {/* Live video playback embedded inside the exact photo frame */}
                         {isPlaying && clip ? (
                           <video
                             src={clip.videoUrl}
                             autoPlay
-                            loop
                             muted
                             playsInline
                             className="strip-slot-video"
-                            style={{ filter: selectedFilter.cssFilter }}
+                            style={{ filter: selectedFilter?.cssFilter || 'none' }}
+                            onEnded={() => setActivePlayingPhotoId(null)}
                           />
                         ) : null}
 
-                        <div className="strip-slot-live-badge">
+                        {/* Subtle Live Badge Indicator */}
+                        <div className={`strip-slot-live-badge ${isPlaying ? 'active' : ''}`}>
                           <span className={`live-tab-dot ${isPlaying ? 'active' : ''}`} />
-                          <span>{isPlaying ? 'PAUSE LIVE' : '▶ LIVE'}</span>
+                          <span>{isPlaying ? '▶ PLAYING' : '✦ LIVE'}</span>
                         </div>
                       </div>
                     );
@@ -251,7 +254,7 @@ export default function PhotoStripPreview({
               </div>
               <div className="spec-item">
                 <span className="spec-label">FILTER EMULSION:</span>
-                <span className="spec-value">{selectedFilter.name}</span>
+                <span className="spec-value">{selectedFilter?.name || 'Retro Film'}</span>
               </div>
             </div>
           </div>
@@ -310,13 +313,14 @@ export default function PhotoStripPreview({
               </div>
             </div>
 
-            {/* Tertiary: Live Photo Moments Preview & Download (Only if Live Photos Mode) */}
-            {liveClips && liveClips.length > 0 && (
-              <div className="live-moments-card">
-                <div className="live-moments-header">
+            {/* Tertiary: Live Photo Downloads (Only in Live Photos Mode) */}
+            {/* Direct download controls without separate video preview cards */}
+            {captureMode === 'live' && liveClips && liveClips.length > 0 && (
+              <div className="live-downloads-card">
+                <div className="live-downloads-header">
                   <div className="live-header-tag">
                     <span className="live-pulse-dot"></span>
-                    <span className="live-header-title">LIVE PHOTO MOMENTS ({liveClips.length})</span>
+                    <span className="live-header-title">LIVE PHOTO CLIPS ({liveClips.length})</span>
                   </div>
                   <button
                     type="button"
@@ -327,44 +331,22 @@ export default function PhotoStripPreview({
                     Save All Live
                   </button>
                 </div>
-                <p className="live-moments-hint">
-                  ~2.7s moving moment around each shutter click (1.5s before + 1.2s after).
+                <p className="live-downloads-hint">
+                  Click any photo frame on the strip to play its motion clip!
                 </p>
 
-                <div className="live-clips-grid">
+                <div className="live-buttons-grid">
                   {liveClips.map((clip) => (
-                    <div key={clip.id} className="live-clip-tile">
-                      <div className="live-video-box">
-                        <video
-                          src={clip.videoUrl}
-                          autoPlay
-                          loop
-                          muted
-                          playsInline
-                          className="live-preview-video"
-                          style={{ filter: selectedFilter.cssFilter }}
-                          onMouseEnter={(e) => {
-                            e.target.currentTime = 0;
-                            e.target.play().catch(() => {});
-                          }}
-                        />
-                        <div className="live-pill-badge">
-                          <span className="live-badge-dot"></span>
-                          <span>LIVE #{clip.id}</span>
-                        </div>
-                        <span className="live-duration-tag">{clip.duration}s</span>
-                      </div>
-
-                      <button
-                        type="button"
-                        className="single-live-dl-btn"
-                        onClick={() => handleDownloadLiveClip(clip)}
-                        title={`Download Live Clip ${clip.id} (${clip.filename})`}
-                      >
-                        <span className="dl-icon">📹</span>
-                        <span>Clip #{clip.id} ({clip.extension.toUpperCase()})</span>
-                      </button>
-                    </div>
+                    <button
+                      key={clip.id}
+                      type="button"
+                      className="single-live-dl-btn"
+                      onClick={() => handleDownloadLiveClip(clip)}
+                      title={`Download Live Clip ${clip.id} (${clip.filename})`}
+                    >
+                      <span className="dl-icon">📹</span>
+                      <span>Clip #{clip.id} ({clip.extension.toUpperCase()})</span>
+                    </button>
                   ))}
                 </div>
               </div>

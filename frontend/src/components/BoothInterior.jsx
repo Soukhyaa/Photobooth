@@ -44,7 +44,6 @@ export default function BoothInterior({
   const [countdownValue, setCountdownValue] = useState(3);
   const [isFlashing, setIsFlashing] = useState(false);
   const [capturedPhotos, setCapturedPhotos] = useState([]);
-  const [composedStrip, setComposedStrip] = useState(null);
   const [baseStripUrl, setBaseStripUrl] = useState(null);
 
   // Timer refs to prevent memory leaks / clean cancel
@@ -123,7 +122,6 @@ export default function BoothInterior({
     setCapturedPhotos([]);
     revokeLiveClipUrls(liveClipsRef.current);
     setLiveClips([]);
-    setComposedStrip(null);
     setBaseStripUrl(null);
   }, []);
 
@@ -149,7 +147,6 @@ export default function BoothInterior({
     setCapturedPhotos([]);
     revokeLiveClipUrls(liveClipsRef.current);
     setLiveClips([]);
-    setComposedStrip(null);
     setBaseStripUrl(null);
   }, []);
 
@@ -422,7 +419,7 @@ export default function BoothInterior({
             captureMode={captureMode}
             selectedFilter={activeFilter}
             onRetake={handleRetakeSet}
-            onStripComposed={(url) => setComposedStrip(url)}
+            initialBaseStripUrl={baseStripUrl}
           />
         ) : (captureState === 'ready_to_dispense' || captureState === 'dispensing' || captureState === 'dispensed') ? (
           /* Steps 1, 2, 3: Physical Dispensing Machine Station */
