@@ -3208,4 +3208,403 @@
   text-shadow: 0 1px 0 #ffffff;
 }
 
+/* ==========================================================================
+   FEATURE: CUSTOMIZABLE PHOTO STRIP DESIGNS & WIDTH FORMATS
+   ========================================================================== */
+
+/* 1. Dispenser Station Customizer Console */
+.dispenser-customizer-console {
+  max-width: 580px;
+  width: 100%;
+  background: rgba(18, 2, 5, 0.85);
+  border: 1.5px solid rgba(250, 184, 57, 0.4);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 
+    0 8px 25px rgba(0, 0, 0, 0.7),
+    inset 0 1px 3px rgba(255, 255, 255, 0.1);
+  margin-top: 4px;
+}
+
+.customizer-headline-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.customizer-title {
+  font-family: var(--font-marquee-bebas);
+  font-size: 1.3rem;
+  letter-spacing: 2px;
+  color: var(--color-mustard-bright);
+  margin: 0;
+  text-shadow: 0 0 12px rgba(250, 184, 57, 0.4);
+}
+
+.customizer-sparkle {
+  color: var(--color-mustard-bright);
+  font-size: 0.9rem;
+}
+
+.customizer-step-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+
+.customizer-step-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.step-num-pill {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-mustard-main);
+  color: #240409;
+  font-weight: 800;
+  font-size: 0.68rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.step-label {
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--color-cream-light);
+}
+
+/* Width Options in Dispenser Console */
+.width-options-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.width-option-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1.5px solid rgba(250, 184, 57, 0.25);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #ffffff;
+}
+
+.width-option-card:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--color-mustard-bright);
+}
+
+.width-option-card.active {
+  background: linear-gradient(135deg, rgba(250, 184, 57, 0.22) 0%, rgba(184, 119, 13, 0.32) 100%);
+  border-color: var(--color-mustard-bright);
+  box-shadow: 0 0 10px rgba(250, 184, 57, 0.3);
+}
+
+.width-icon {
+  font-size: 1.25rem;
+}
+
+.width-text-block {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.width-title {
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: #ffffff;
+}
+
+.width-spec {
+  font-size: 0.62rem;
+  color: #cbd5e1;
+}
+
+/* 6 Preset Designs in Dispenser Console */
+.design-options-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.design-option-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 8px 6px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1.5px solid rgba(250, 184, 57, 0.2);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.design-option-card:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--color-mustard-bright);
+  transform: translateY(-1px);
+}
+
+.design-option-card.active {
+  background: rgba(250, 184, 57, 0.18);
+  border-color: var(--color-mustard-bright);
+  box-shadow: 0 0 12px rgba(250, 184, 57, 0.4);
+  transform: scale(1.02);
+}
+
+.design-swatch-thumb {
+  width: 46px;
+  height: 28px;
+  border-radius: 4px;
+  border: 1.5px solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 5px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+}
+
+.swatch-mat-box {
+  width: 30px;
+  height: 18px;
+  border: 1px solid;
+  border-radius: 2px;
+}
+
+.swatch-badge {
+  position: absolute;
+  font-size: 0.5rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.design-card-name {
+  font-family: var(--font-marquee-bebas);
+  font-size: 0.88rem;
+  letter-spacing: 1px;
+  color: #ffffff;
+  line-height: 1.1;
+}
+
+.design-card-tag {
+  font-size: 0.58rem;
+  color: #94a3b8;
+  margin-top: 2px;
+  white-space: nowrap;
+}
+
+/* Live Customization Preview Row */
+.customizer-live-preview-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(250, 184, 57, 0.25);
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+
+.mini-strip-preview-box {
+  width: 65px;
+  height: 95px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  flex-shrink: 0;
+}
+
+.mini-strip-img {
+  height: 90px;
+  width: auto;
+  object-fit: contain;
+  border-radius: 2px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+  transition: all 0.25s ease;
+}
+
+.mini-strip-img.is-slim {
+  width: 25px;
+}
+
+.mini-strip-img.is-wide {
+  width: 31px;
+}
+
+.mini-preview-spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.65rem;
+  color: var(--color-mustard-bright);
+}
+
+.spin-cog {
+  animation: spin 1.5s linear infinite;
+}
+
+.mini-preview-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  gap: 3px;
+}
+
+.preview-info-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.58rem;
+  font-weight: 800;
+  color: var(--color-mustard-bright);
+  letter-spacing: 1px;
+}
+
+.info-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 6px #10b981;
+}
+
+.preview-design-name {
+  font-family: var(--font-marquee-bebas);
+  font-size: 1.15rem;
+  letter-spacing: 1.5px;
+  color: #ffffff;
+  margin: 0;
+}
+
+.preview-design-desc {
+  font-size: 0.68rem;
+  color: #cbd5e1;
+  margin: 0;
+  line-height: 1.35;
+}
+
+.preview-format-spec {
+  font-size: 0.65rem;
+  color: var(--color-mustard-glow);
+  margin-top: 2px;
+}
+
+/* 2. Dispenser Carrier Width Adaptations */
+.dispensing-strip-carrier.is-slim {
+  width: 90px;
+}
+
+.dispensing-strip-carrier.is-wide {
+  width: 114px;
+}
+
+/* 3. Review Workspace Customization Card & Switchers */
+.preview-width-toggle-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.preview-width-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(250, 184, 57, 0.25);
+  border-radius: 6px;
+  padding: 7px 8px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--color-cream-light);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.preview-width-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.preview-width-btn.active {
+  background: var(--color-mustard-main);
+  color: #240409;
+  border-color: #ffffff;
+  font-weight: 800;
+}
+
+.preview-designs-picker {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.preview-design-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(250, 184, 57, 0.2);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.preview-design-pill:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--color-mustard-bright);
+}
+
+.preview-design-pill.active {
+  background: rgba(250, 184, 57, 0.22);
+  border-color: var(--color-mustard-bright);
+  box-shadow: 0 0 8px rgba(250, 184, 57, 0.35);
+}
+
+.design-pill-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid;
+  flex-shrink: 0;
+}
+
+/* Strip Card Width Variants */
+.physical-strip-card.card-slim {
+  width: 192px;
+  aspect-ratio: 4 / 15;
+}
+
+.physical-strip-card.card-wide {
+  width: 240px;
+  aspect-ratio: 1 / 3;
+}
+
+
 

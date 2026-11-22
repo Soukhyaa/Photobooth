@@ -3,7 +3,9 @@ import {
   composeBasePhotoStrip,
   renderFinalPhotoStrip,
   triggerBrowserDownload,
-  getFormattedVintageDate
+  getFormattedVintageDate,
+  STRIP_DESIGNS,
+  STRIP_WIDTH_PRESETS
 } from '../utils/stripComposer';
 import { triggerVideoDownload } from '../utils/liveRecorder';
 import { soundEngine } from '../utils/audio';
@@ -14,8 +16,14 @@ export default function PhotoStripPreview({
   captureMode = 'still',
   selectedFilter = {},
   onRetake,
-  initialBaseStripUrl = null
+  initialBaseStripUrl = null,
+  selectedDesignId = 'classic_cream',
+  selectedWidthId = 'wide',
+  onDesignChange,
+  onWidthChange
 }) {
+  const [currentDesignId, setCurrentDesignId] = useState(selectedDesignId);
+  const [currentWidthId, setCurrentWidthId] = useState(selectedWidthId);
   const [baseStripUrl, setBaseStripUrl] = useState(initialBaseStripUrl || null);
   const [isComposingBase, setIsComposingBase] = useState(!initialBaseStripUrl);
   const [caption, setCaption] = useState('MEMORIES IN THE BOOTH');
@@ -25,7 +33,20 @@ export default function PhotoStripPreview({
   const baseCanvasRef = useRef(null);
   const hasComposedRef = useRef(false);
 
-  // 1. Compose the 4-photo base strip ONCE.
+  // Sync with parent props if changed externally
+  useEffect(() => {
+    if (selectedDesignId && selectedDesignId !== currentDesignId) {
+      setCurrentDesignId(selectedDesignId);
+    }
+  }, [selectedDesignId, currentDesignId]);
+
+  useEffect(() => {
+    if (selectedWidthId && selectedWidthId !== currentWidthId) {
+      setCurrentWidthId(selectedWidthId);
+    }
+  }, [selectedWidthId, currentWidthId]);
+
+  // 1. Compose the 4-photo base strip once on mount if not already present
   // The 4 photographs, borders, and grain remain completely stationary
   // while the user edits or deletes caption text in real time.
   useEffect(() => {
@@ -38,6 +59,8 @@ export default function PhotoStripPreview({
     }
 
     composeBasePhotoStrip(capturedPhotos, {
+      designId: currentDesignId,
+      widthId: currentWidthId,
       dateText: getFormattedVintageDate()
     })
       .then((canvas) => {
@@ -56,18 +79,60 @@ export default function PhotoStripPreview({
     return () => {
       isMounted = false;
     };
-  }, [capturedPhotos, baseStripUrl]);
+  }, [capturedPhotos, baseStripUrl, currentDesignId, currentWidthId]);
 
-  // 2. Download Composed 600 × 1800 px Photo Strip (Pure Still Photograph Print)
+  // Switch Design Preset
+  const handleDesignSwitch = (designId) => {
+    if (designId === currentDesignId || capturedPhotos.length === 0) return;
+    soundEngine.playLeverClick();
+    setCurrentDesignId(designId);
+    if (onDesignChange) onDesignChange(designId);
+
+    composeBasePhotoStrip(capturedPhotos, {
+      designId,
+      widthId: currentWidthId,
+      dateText: getFormattedVintageDate()
+    })
+      .then((canvas) => {
+        baseCanvasRef.current = canvas;
+        setBaseStripUrl(canvas.toDataURL('image/png'));
+      })
+      .catch((err) => console.error('Error switching design:', err));
+  };
+
+  // Switch Width Format (Classic Wide vs Slim Strip)
+  const handleWidthSwitch = (widthId) => {
+    if (widthId === currentWidthId || capturedPhotos.length === 0) return;
+    soundEngine.playLeverClick();
+    setCurrentWidthId(widthId);
+    if (onWidthChange) onWidthChange(widthId);
+
+    composeBasePhotoStrip(capturedPhotos, {
+      designId: currentDesignId,
+      widthId,
+      dateText: getFormattedVintageDate()
+    })
+      .then((canvas) => {
+        baseCanvasRef.current = canvas;
+        setBaseStripUrl(canvas.toDataURL('image/png'));
+      })
+      .catch((err) => console.error('Error switching width:', err));
+  };
+
+  // 2. Download Composed Photo Strip (Pure Still Photograph Print with Selected Design)
   const handleDownloadStrip = () => {
     if (!baseCanvasRef.current) return;
     soundEngine.playTrayDrop();
 
-    // Render final strip synchronously with latest caption in ~2ms
-    const finalStripUrl = renderFinalPhotoStrip(baseCanvasRef.current, caption);
-    triggerBrowserDownload(finalStripUrl, 'vintage-booth-strip.png');
+    // Render final strip synchronously with latest caption and selected design in ~2ms
+    const finalStripUrl = renderFinalPhotoStrip(baseCanvasRef.current, caption, {
+      designId: currentDesignId,
+      widthId: currentWidthId
+    });
+    triggerBrowserDownload(finalStripUrl, `vintage-booth-strip-${currentDesignId}-${currentWidthId}.png`);
 
-    setDownloadNotice('✓ Photo strip downloaded (600 × 1800 px)!');
+    const widthInfo = STRIP_WIDTH_PRESETS[currentWidthId]?.sub || '600 × 1800 px';
+    setDownloadNotice(`✓ Photo strip downloaded (${widthInfo})!`);
     setTimeout(() => setDownloadNotice(''), 3500);
   };
 
@@ -117,6 +182,9 @@ export default function PhotoStripPreview({
     setActivePlayingPhotoId((prev) => (prev === photoId ? null : photoId));
   };
 
+  const activeWidthPreset = STRIP_WIDTH_PRESETS[currentWidthId] || STRIP_WIDTH_PRESETS.wide;
+  const activeDesignPreset = STRIP_DESIGNS.find((d) => d.id === currentDesignId) || STRIP_DESIGNS[0];
+
   return (
     <div className="strip-preview-stage">
       {/* Header */}
@@ -128,7 +196,7 @@ export default function PhotoStripPreview({
         </div>
         <h2 className="strip-preview-title">Your 4-Pose Photo Strip</h2>
         <p className="strip-preview-sub">
-          Filter: <strong>{selectedFilter?.name || 'Selected Filter'}</strong> • Standard 2 × 6″ (600 × 1800 px @ 300 DPI)
+          Filter: <strong>{selectedFilter?.name || 'Selected Filter'}</strong> • Design: <strong>{activeDesignPreset.name}</strong> • Format: <strong>{activeWidthPreset.name}</strong> ({activeWidthPreset.sub})
           {captureMode === 'live' && (
             <span className="live-sub-tag"> • <strong>✦ Live Photos: Click photos on strip to play!</strong></span>
           )}
@@ -144,7 +212,14 @@ export default function PhotoStripPreview({
               <span>Composing photo strip frames...</span>
             </div>
           ) : (
-            <div className="physical-strip-card" title="Composed 600 × 1800 px Photo Strip">
+            <div
+              className={`physical-strip-card ${currentWidthId === 'slim' ? 'card-slim' : 'card-wide'}`}
+              style={{
+                width: activeWidthPreset.cardWidthCss,
+                aspectRatio: activeWidthPreset.aspectRatioCss
+              }}
+              title={`Composed ${activeWidthPreset.name} Photo Strip (${activeDesignPreset.name})`}
+            >
               <img
                 src={baseStripUrl}
                 alt="Composed Vintage 4-Pose Photo Strip"
@@ -153,8 +228,19 @@ export default function PhotoStripPreview({
 
               {/* Dynamic Live Typewriter Caption Overlay */}
               {/* Overlays caption in real-time with zero image reload or flicker */}
-              <div className="strip-live-caption-slot" aria-hidden="true">
-                <span className="strip-live-caption-text">
+              <div
+                className="strip-live-caption-slot"
+                style={{
+                  bottom: activeWidthPreset.captionBottomCss
+                }}
+                aria-hidden="true"
+              >
+                <span
+                  className="strip-live-caption-text"
+                  style={{
+                    color: activeDesignPreset.captionColor
+                  }}
+                >
                   {caption.trim() || <span className="caption-empty-dot">• • •</span>}
                 </span>
               </div>
@@ -162,12 +248,7 @@ export default function PhotoStripPreview({
               {/* In Live Photos mode: 4 Clickable Photo Zones directly on the strip */}
               {captureMode === 'live' && liveClips.length > 0 && (
                 <div className="strip-interactive-frames-overlay">
-                  {[
-                    { id: 1, top: '1.94%' },
-                    { id: 2, top: '24.94%' },
-                    { id: 3, top: '47.94%' },
-                    { id: 4, top: '70.94%' }
-                  ].map(({ id, top }) => {
+                  {activeWidthPreset.interactiveSlots.map(({ id, top, left, width, height }) => {
                     const clip = liveClips.find((c) => c.id === id);
                     const isPlaying = activePlayingPhotoId === id;
                     return (
@@ -176,9 +257,9 @@ export default function PhotoStripPreview({
                         className={`strip-photo-interactive-slot ${isPlaying ? 'playing' : ''}`}
                         style={{
                           top,
-                          left: '6.67%',
-                          width: '86.67%',
-                          height: '21.67%'
+                          left,
+                          width,
+                          height
                         }}
                         onClick={() => handleToggleLiveFrame(id)}
                         role="button"
@@ -221,8 +302,55 @@ export default function PhotoStripPreview({
           )}
         </div>
 
-        {/* Right Panel: Caption Customization & Download Options */}
+        {/* Right Panel: Customization, Caption & Download Options */}
         <aside className="strip-actions-panel">
+          {/* Format & Design Options */}
+          <div className="strip-options-card">
+            <h3 className="options-heading">PRINT FORMAT & DESIGN</h3>
+
+            {/* Width Format Switcher */}
+            <div className="preview-width-toggle-group">
+              <button
+                type="button"
+                className={`preview-width-btn ${currentWidthId === 'wide' ? 'active' : ''}`}
+                onClick={() => handleWidthSwitch('wide')}
+                title="Classic 2 × 6″ wide photo strip format"
+              >
+                🖼️ Classic Wide (2 × 6″)
+              </button>
+              <button
+                type="button"
+                className={`preview-width-btn ${currentWidthId === 'slim' ? 'active' : ''}`}
+                onClick={() => handleWidthSwitch('slim')}
+                title="Narrow 1.6 × 6″ ribbon strip format"
+              >
+                🎞️ Slim Strip (1.6 × 6″)
+              </button>
+            </div>
+
+            {/* 6 Preset Design Badges */}
+            <div className="preview-designs-picker">
+              {STRIP_DESIGNS.map((d) => {
+                const isSelected = currentDesignId === d.id;
+                return (
+                  <button
+                    key={d.id}
+                    type="button"
+                    className={`preview-design-pill ${isSelected ? 'active' : ''}`}
+                    onClick={() => handleDesignSwitch(d.id)}
+                    title={d.description}
+                  >
+                    <span
+                      className="design-pill-swatch"
+                      style={{ backgroundColor: d.swatchBg, borderColor: d.swatchBorder }}
+                    />
+                    <span>{d.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Caption Editor Box */}
           <div className="strip-options-card">
             <h3 className="options-heading">KEEPSAKE CAPTION</h3>
@@ -246,11 +374,11 @@ export default function PhotoStripPreview({
             <div className="strip-specs-info">
               <div className="spec-item">
                 <span className="spec-label">DIMENSIONS:</span>
-                <span className="spec-value">600 × 1800 px (300 DPI)</span>
+                <span className="spec-value">{activeWidthPreset.sub}</span>
               </div>
               <div className="spec-item">
-                <span className="spec-label">PAPER TONE:</span>
-                <span className="spec-value">Warm Ivory / Vanilla Cream</span>
+                <span className="spec-label">DESIGN PRESET:</span>
+                <span className="spec-value">{activeDesignPreset.name}</span>
               </div>
               <div className="spec-item">
                 <span className="spec-label">FILTER EMULSION:</span>
@@ -274,12 +402,12 @@ export default function PhotoStripPreview({
               className="strip-btn download-strip-btn"
               onClick={handleDownloadStrip}
               disabled={isComposingBase}
-              aria-label="Download complete 600x1800 photo strip PNG"
+              aria-label="Download complete photo strip PNG"
             >
               <span className="btn-icon">📥</span>
               <div className="btn-labels">
                 <span className="main-text">DOWNLOAD PHOTO STRIP</span>
-                <span className="sub-text">FULL HIGH-RES PNG (600 × 1800 PX)</span>
+                <span className="sub-text">HIGH-RES PNG ({activeWidthPreset.sub.toUpperCase()})</span>
               </div>
             </button>
 
@@ -314,7 +442,6 @@ export default function PhotoStripPreview({
             </div>
 
             {/* Tertiary: Live Photo Downloads (Only in Live Photos Mode) */}
-            {/* Direct download controls without separate video preview cards */}
             {captureMode === 'live' && liveClips && liveClips.length > 0 && (
               <div className="live-downloads-card">
                 <div className="live-downloads-header">

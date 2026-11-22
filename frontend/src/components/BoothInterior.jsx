@@ -14,7 +14,10 @@ import {
 } from '../utils/liveRecorder';
 import {
   composeBasePhotoStrip,
-  getFormattedVintageDate
+  getFormattedVintageDate,
+  STRIP_DESIGNS,
+  STRIP_WIDTH_PRESETS,
+  clearComposedStripCache
 } from '../utils/stripComposer';
 
 export default function BoothInterior({
@@ -45,6 +48,9 @@ export default function BoothInterior({
   const [isFlashing, setIsFlashing] = useState(false);
   const [capturedPhotos, setCapturedPhotos] = useState([]);
   const [baseStripUrl, setBaseStripUrl] = useState(null);
+  const [selectedDesignId, setSelectedDesignId] = useState('classic_cream');
+  const [selectedWidthId, setSelectedWidthId] = useState('wide');
+  const [isRecomposingStrip, setIsRecomposingStrip] = useState(false);
 
   // Timer refs to prevent memory leaks / clean cancel
   const countdownTimerRef = useRef(null);
@@ -121,8 +127,11 @@ export default function BoothInterior({
     setIsFlashing(false);
     setCapturedPhotos([]);
     revokeLiveClipUrls(liveClipsRef.current);
+    clearComposedStripCache();
     setLiveClips([]);
     setBaseStripUrl(null);
+    setSelectedDesignId('classic_cream');
+    setSelectedWidthId('wide');
   }, []);
 
   // Retake entire set from review screen
@@ -146,8 +155,11 @@ export default function BoothInterior({
     setIsFlashing(false);
     setCapturedPhotos([]);
     revokeLiveClipUrls(liveClipsRef.current);
+    clearComposedStripCache();
     setLiveClips([]);
     setBaseStripUrl(null);
+    setSelectedDesignId('classic_cream');
+    setSelectedWidthId('wide');
   }, []);
 
   // Capture single photo and handle sequence progression
@@ -208,7 +220,11 @@ export default function BoothInterior({
             const completionDelay = activeModeRef.current === 'live' ? 1500 : 500;
             sequenceTimerRef.current = setTimeout(() => {
               // Pre-compose the base strip canvas in background so the physical paper strip is ready to emerge
-              composeBasePhotoStrip(updatedPhotos, { dateText: getFormattedVintageDate() })
+              composeBasePhotoStrip(updatedPhotos, {
+                designId: selectedDesignId,
+                widthId: selectedWidthId,
+                dateText: getFormattedVintageDate()
+              })
                 .then((canvas) => {
                   setBaseStripUrl(canvas.toDataURL('image/png'));
                 })
@@ -301,6 +317,54 @@ export default function BoothInterior({
     setCurrentPhotoIndex(1);
     runCountdownForPhoto(1, []);
   };
+
+  // Customization Step: Switch strip design preset
+  const handleSelectDesign = useCallback(
+    (designId) => {
+      if (designId === selectedDesignId || capturedPhotos.length === 0) return;
+      soundEngine.playLeverClick();
+      setSelectedDesignId(designId);
+      setIsRecomposingStrip(true);
+      composeBasePhotoStrip(capturedPhotos, {
+        designId,
+        widthId: selectedWidthId,
+        dateText: getFormattedVintageDate()
+      })
+        .then((canvas) => {
+          setBaseStripUrl(canvas.toDataURL('image/png'));
+          setIsRecomposingStrip(false);
+        })
+        .catch((err) => {
+          console.error('Error switching strip design:', err);
+          setIsRecomposingStrip(false);
+        });
+    },
+    [capturedPhotos, selectedDesignId, selectedWidthId]
+  );
+
+  // Customization Step: Switch strip width format (Classic Wide vs Slim Strip)
+  const handleSelectWidth = useCallback(
+    (widthId) => {
+      if (widthId === selectedWidthId || capturedPhotos.length === 0) return;
+      soundEngine.playLeverClick();
+      setSelectedWidthId(widthId);
+      setIsRecomposingStrip(true);
+      composeBasePhotoStrip(capturedPhotos, {
+        designId: selectedDesignId,
+        widthId,
+        dateText: getFormattedVintageDate()
+      })
+        .then((canvas) => {
+          setBaseStripUrl(canvas.toDataURL('image/png'));
+          setIsRecomposingStrip(false);
+        })
+        .catch((err) => {
+          console.error('Error switching strip width:', err);
+          setIsRecomposingStrip(false);
+        });
+    },
+    [capturedPhotos, selectedDesignId, selectedWidthId]
+  );
 
   // Step 4 in sequence: user clicks "GET MY STRIP"
   // Starts mechanical printing & dispensing animation with authentic sounds
@@ -420,6 +484,10 @@ export default function BoothInterior({
             selectedFilter={activeFilter}
             onRetake={handleRetakeSet}
             initialBaseStripUrl={baseStripUrl}
+            selectedDesignId={selectedDesignId}
+            selectedWidthId={selectedWidthId}
+            onDesignChange={handleSelectDesign}
+            onWidthChange={handleSelectWidth}
           />
         ) : (captureState === 'ready_to_dispense' || captureState === 'dispensing' || captureState === 'dispensed') ? (
           /* Steps 1, 2, 3: Physical Dispensing Machine Station */
@@ -457,21 +525,152 @@ export default function BoothInterior({
                 </p>
 
                 {captureState === 'ready_to_dispense' && (
-                  <button
-                    type="button"
-                    className="get-my-strip-btn"
-                    onClick={handleGetMyStrip}
-                    aria-label="Get my physical photo strip"
-                  >
-                    <div className="btn-bulb-ring"></div>
-                    <div className="get-strip-inner">
-                      <span className="get-strip-icon">🎟️</span>
-                      <div className="get-strip-labels">
-                        <span className="get-strip-main">GET MY STRIP</span>
-                        <span className="get-strip-sub">PRINT & DISPENSE</span>
+                  <div className="dispenser-customizer-console">
+                    {/* Header */}
+                    <div className="customizer-headline-box">
+                      <span className="customizer-sparkle">✦</span>
+                      <h4 className="customizer-title">CUSTOMIZE YOUR STRIP</h4>
+                      <span className="customizer-sparkle">✦</span>
+                    </div>
+
+                    {/* Step 1: Strip Width Options */}
+                    <div className="customizer-step-group">
+                      <div className="customizer-step-header">
+                        <span className="step-num-pill">1</span>
+                        <span className="step-label">STRIP WIDTH FORMAT:</span>
+                      </div>
+                      <div className="width-options-grid" role="radiogroup" aria-label="Strip Width Options">
+                        <button
+                          type="button"
+                          className={`width-option-card ${selectedWidthId === 'wide' ? 'active' : ''}`}
+                          onClick={() => handleSelectWidth('wide')}
+                          role="radio"
+                          aria-checked={selectedWidthId === 'wide'}
+                          title="Classic Wide: 2 × 6″ format with generous borders"
+                        >
+                          <span className="width-icon">🖼️</span>
+                          <div className="width-text-block">
+                            <span className="width-title">Classic Wide Strip</span>
+                            <span className="width-spec">2 × 6″ (Generous borders)</span>
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          className={`width-option-card ${selectedWidthId === 'slim' ? 'active' : ''}`}
+                          onClick={() => handleSelectWidth('slim')}
+                          role="radio"
+                          aria-checked={selectedWidthId === 'slim'}
+                          title="Slim Strip: 1.6 × 6″ narrow ribbon format with compact borders"
+                        >
+                          <span className="width-icon">🎞️</span>
+                          <div className="width-text-block">
+                            <span className="width-title">Slim Strip</span>
+                            <span className="width-spec">1.6 × 6″ (Compact borders)</span>
+                          </div>
+                        </button>
                       </div>
                     </div>
-                  </button>
+
+                    {/* Step 2: 6 Preset Designs */}
+                    <div className="customizer-step-group">
+                      <div className="customizer-step-header">
+                        <span className="step-num-pill">2</span>
+                        <span className="step-label">CHOOSE PRESET DESIGN:</span>
+                      </div>
+                      <div className="design-options-grid" role="radiogroup" aria-label="Strip Preset Designs">
+                        {STRIP_DESIGNS.map((design) => {
+                          const isSelected = selectedDesignId === design.id;
+                          return (
+                            <button
+                              key={design.id}
+                              type="button"
+                              className={`design-option-card ${isSelected ? 'active' : ''}`}
+                              onClick={() => handleSelectDesign(design.id)}
+                              role="radio"
+                              aria-checked={isSelected}
+                              title={`${design.name}: ${design.description}`}
+                            >
+                              <div
+                                className="design-swatch-thumb"
+                                style={{
+                                  backgroundColor: design.swatchBg,
+                                  borderColor: isSelected ? 'var(--color-mustard-bright)' : design.swatchBorder
+                                }}
+                              >
+                                <div
+                                  className="swatch-mat-box"
+                                  style={{
+                                    borderColor: design.photoBorder,
+                                    backgroundColor: design.id === 'cherry_pop' ? '#2e0811' : '#e6dccb'
+                                  }}
+                                />
+                                {design.patternType === 'polka_dots' && (
+                                  <span className="swatch-badge">• •</span>
+                                )}
+                                {design.patternType === 'stars_hearts' && (
+                                  <span className="swatch-badge">✦ ♥</span>
+                                )}
+                              </div>
+                              <span className="design-card-name">{design.name}</span>
+                              <span className="design-card-tag">{design.tagline}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Live Customization Preview */}
+                    <div className="customizer-live-preview-row">
+                      <div className="mini-strip-preview-box">
+                        {isRecomposingStrip ? (
+                          <div className="mini-preview-spinner">
+                            <span className="spin-cog">⚙️</span>
+                            <span>Updating...</span>
+                          </div>
+                        ) : baseStripUrl ? (
+                          <img
+                            src={baseStripUrl}
+                            alt="Live customized strip preview"
+                            className={`mini-strip-img ${selectedWidthId === 'slim' ? 'is-slim' : 'is-wide'}`}
+                          />
+                        ) : null}
+                      </div>
+
+                      <div className="mini-preview-info">
+                        <div className="preview-info-badge">
+                          <span className="info-dot"></span>
+                          <span>LIVE PREVIEW</span>
+                        </div>
+                        <h5 className="preview-design-name">
+                          {STRIP_DESIGNS.find((d) => d.id === selectedDesignId)?.name}
+                        </h5>
+                        <p className="preview-design-desc">
+                          {STRIP_DESIGNS.find((d) => d.id === selectedDesignId)?.description}
+                        </p>
+                        <span className="preview-format-spec">
+                          Format: <strong>{STRIP_WIDTH_PRESETS[selectedWidthId]?.name}</strong> ({STRIP_WIDTH_PRESETS[selectedWidthId]?.sub})
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Prominent GET MY STRIP Button */}
+                    <button
+                      type="button"
+                      className="get-my-strip-btn"
+                      onClick={handleGetMyStrip}
+                      aria-label="Get my physical photo strip"
+                    >
+                      <div className="btn-bulb-ring"></div>
+                      <div className="get-strip-inner">
+                        <span className="get-strip-icon">🎟️</span>
+                        <div className="get-strip-labels">
+                          <span className="get-strip-main">GET MY STRIP</span>
+                          <span className="get-strip-sub">PRINT & DISPENSE ({STRIP_DESIGNS.find((d) => d.id === selectedDesignId)?.name.toUpperCase()})</span>
+                        </div>
+                      </div>
+                    </button>
+                  </div>
                 )}
 
                 {captureState === 'dispensing' && (
@@ -511,7 +710,7 @@ export default function BoothInterior({
                   {/* Emerging / Dropped Strip Container */}
                   {(captureState === 'dispensing' || captureState === 'dispensed') && (
                     <div
-                      className={`dispensing-strip-carrier ${captureState === 'dispensing' ? 'is-emerging' : 'is-dropped'}`}
+                      className={`dispensing-strip-carrier ${captureState === 'dispensing' ? 'is-emerging' : 'is-dropped'} ${selectedWidthId === 'slim' ? 'is-slim' : 'is-wide'}`}
                       onClick={captureState === 'dispensed' ? handleCollectStrip : undefined}
                       role={captureState === 'dispensed' ? 'button' : undefined}
                       tabIndex={captureState === 'dispensed' ? 0 : undefined}
