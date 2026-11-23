@@ -56,12 +56,13 @@ def test_env():
 
     app.dependency_overrides[get_db] = override_get_db
 
-    with TestClient(app) as client:
-        yield {
-            "client": client,
-            "db_factory": TestingSessionLocal,
-            "storage_dir": Path(temp_storage),
-        }
+    with patch("app.main.MemoryCleanupWorker"):
+        with TestClient(app) as client:
+            yield {
+                "client": client,
+                "db_factory": TestingSessionLocal,
+                "storage_dir": Path(temp_storage),
+            }
 
     # Cleanup
     app.dependency_overrides.clear()

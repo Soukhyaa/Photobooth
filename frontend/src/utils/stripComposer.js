@@ -85,6 +85,102 @@ export const STRIP_WIDTH_PRESETS = {
 };
 
 /**
+ * Computes balanced strip geometry, heights and footer positioning for 2, 3, or 4 photos.
+ * Preserves exact pixel coordinates for 4-photo strips while dynamically adapting for 2 or 3 photos.
+ *
+ * @param {number} photoCount - Number of photos (2, 3, or 4)
+ * @param {string} widthId - 'wide' or 'slim'
+ * @returns {Object} Calculated dimensions, margins, footer positions, and CSS helpers
+ */
+export function getCustomStripDimensions(photoCount = 4, widthId = 'wide') {
+  const count = Math.min(4, Math.max(2, Number(photoCount) || 4));
+  const basePreset = STRIP_WIDTH_PRESETS[widthId] || STRIP_WIDTH_PRESETS.wide;
+  const isSlim = basePreset.id === 'slim';
+
+  const width = basePreset.width;
+  const sideMargin = basePreset.sideMargin;
+  const photoWidth = basePreset.photoWidth;
+  const photoHeight = basePreset.photoHeight;
+  const photoGap = basePreset.photoGap;
+  const topMargin = basePreset.topMargin;
+
+  const photosBottom = topMargin + (count * photoHeight) + ((count - 1) * photoGap);
+
+  let footerStartY;
+  let captionY;
+  let dateY;
+  let arcadeY;
+  let height;
+
+  if (isSlim) {
+    if (count === 4) {
+      footerStartY = 1460;
+      captionY = 1530;
+      dateY = 1590;
+      arcadeY = 1625;
+      height = 1800;
+    } else if (count === 3) {
+      footerStartY = 1110;
+      captionY = 1180;
+      dateY = 1240;
+      arcadeY = 1275;
+      height = 1330;
+    } else {
+      // count === 2
+      footerStartY = 760;
+      captionY = 830;
+      dateY = 890;
+      arcadeY = 925;
+      height = 980;
+    }
+  } else {
+    // Wide format (600px)
+    if (count === 4) {
+      footerStartY = 1685;
+      captionY = 1718;
+      dateY = 1747;
+      arcadeY = 1771;
+      height = 1800;
+    } else if (count === 3) {
+      footerStartY = 1271;
+      captionY = 1304;
+      dateY = 1333;
+      arcadeY = 1357;
+      height = 1386;
+    } else {
+      // count === 2
+      footerStartY = 857;
+      captionY = 890;
+      dateY = 919;
+      arcadeY = 943;
+      height = 972;
+    }
+  }
+
+  const aspectRatioCss = `${width} / ${height}`;
+  const cardWidthCss = isSlim ? '192px' : '240px';
+
+  return {
+    photoCount: count,
+    widthId: basePreset.id,
+    width,
+    height,
+    sideMargin,
+    photoWidth,
+    photoHeight,
+    photoGap,
+    topMargin,
+    photosBottom,
+    footerStartY,
+    captionY,
+    dateY,
+    arcadeY,
+    aspectRatioCss,
+    cardWidthCss
+  };
+}
+
+/**
  * Solid Colours Palette Choices (for Solid Colours Theme)
  */
 export const SOLID_COLOR_PALETTE = [
@@ -277,12 +373,26 @@ export const STRIP_DESIGNS = [
 let loadedImageElementsCache = [];
 let loadedPhotosCacheKey = '';
 
+// In-memory cache for custom strip composer (imported photos studio)
+let customLoadedImageElementsCache = [];
+let customLoadedPhotosCacheKey = '';
+
 /**
  * Reset all in-memory strip composer caches (call when retaking photos)
  */
 export function clearComposedStripCache() {
   loadedImageElementsCache = [];
   loadedPhotosCacheKey = '';
+  customLoadedImageElementsCache = [];
+  customLoadedPhotosCacheKey = '';
+}
+
+/**
+ * Reset in-memory cache for custom imported photo strips
+ */
+export function clearCustomComposedStripCache() {
+  customLoadedImageElementsCache = [];
+  customLoadedPhotosCacheKey = '';
 }
 
 /**
@@ -572,12 +682,153 @@ export async function composeBasePhotoStrip(photos, options = {}) {
 }
 
 /**
+ * Composes a balanced photo strip for 2, 3, or 4 imported photographs.
+ * Reuses designs, solid colors, paper textures, patterns, and vintage typography
+ * without modifying or breaking existing camera booth strips.
+ *
+ * @param {Array<{ dataUrl: string, id?: number|string }>} photos - Array of 2 to 4 photos
+ * @param {Object} options - { designId, solidColorId, widthId, dateText }
+ * @returns {Promise<HTMLCanvasElement>} Composed strip canvas with captionY attached
+ */
+export async function composeCustomPhotoStrip(photos, options = {}) {
+  if (!photos || photos.length === 0) {
+    throw new Error('No photographs provided for custom strip composition');
+  }
+
+  const {
+    designId = 'classic_cream',
+    solidColorId = 'black',
+    widthId = 'wide',
+    dateText = getFormattedVintageDate()
+  } = options;
+
+  const count = Math.min(4, Math.max(2, photos.length));
+  const activePhotos = photos.slice(0, count);
+  const dims = getCustomStripDimensions(count, widthId);
+
+  const designPreset = STRIP_DESIGNS.find((d) => d.id === designId) || STRIP_DESIGNS[0];
+  const solidColorPreset = SOLID_COLOR_PALETTE.find((c) => c.id === solidColorId) || SOLID_COLOR_PALETTE[0];
+
+  const isSolid = designPreset.id === 'solid_colors';
+  const paperColor = isSolid ? solidColorPreset.hex : designPreset.paperColor;
+  const photoBorder = isSolid ? solidColorPreset.photoBorder : designPreset.photoBorder;
+  const dividerColor = isSolid ? solidColorPreset.dividerColor : designPreset.dividerColor;
+  const textColor = isSolid ? solidColorPreset.textColor : designPreset.textColor;
+  const arcadeColor = isSolid ? solidColorPreset.arcadeColor : designPreset.arcadeColor;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = dims.width;
+  canvas.height = dims.height;
+  canvas.captionY = dims.captionY;
+  canvas.stripDimensions = dims;
+  const ctx = canvas.getContext('2d');
+
+  if (!ctx) {
+    throw new Error('Canvas 2D context unavailable');
+  }
+
+  // 1. Draw Paper Background Base
+  ctx.fillStyle = paperColor;
+  ctx.fillRect(0, 0, dims.width, dims.height);
+
+  // 2. Draw Decorative Patterns (if selected)
+  if (designPreset.patternType === 'polka_dots') {
+    drawPolkaDots(ctx, dims.width, dims.height);
+  } else if (designPreset.patternType === 'little_hearts') {
+    drawLittleHeartsPattern(ctx, dims.width, dims.height);
+  } else if (designPreset.patternType === 'starry') {
+    drawStarryPattern(ctx, dims.width, dims.height);
+  }
+
+  // 3. Draw Organic Paper Grain / Emulsion Texture (if enabled)
+  if (designPreset.hasPaperGrain) {
+    drawPaperGrain(ctx, dims.width, dims.height);
+  }
+
+  // 4. Subtle Inset Border on Paper Edges
+  if (designPreset.outerBorder && !isSolid) {
+    ctx.strokeStyle = designPreset.outerBorder;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(10, 10, dims.width - 20, dims.height - 20);
+  } else if (isSolid && solidColorPreset.dividerColor) {
+    ctx.strokeStyle = solidColorPreset.dividerColor;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(8, 8, dims.width - 16, dims.height - 16);
+  }
+
+  // 5. Load & Cache Images for this custom photo set
+  const currentKey = activePhotos
+    .map((p) => (p.dataUrl ? p.dataUrl.slice(-30) : (p.id || '')))
+    .join('|') + `_${count}`;
+
+  if (customLoadedPhotosCacheKey !== currentKey || customLoadedImageElementsCache.length !== count) {
+    customLoadedImageElementsCache = await Promise.all(
+      activePhotos.map((p) => loadImage(p.dataUrl))
+    );
+    customLoadedPhotosCacheKey = currentKey;
+  }
+  const loadedImages = customLoadedImageElementsCache;
+
+  // 6. Draw 2, 3, or 4 Captured Photographs at exact 4:3 Aspect Ratio
+  let currentY = dims.topMargin;
+
+  for (let i = 0; i < loadedImages.length; i++) {
+    const img = loadedImages[i];
+
+    ctx.save();
+    // Soft physical drop shadow for photo depth
+    ctx.shadowColor = isSolid && solidColorPreset.isDark ? 'rgba(0, 0, 0, 0.45)' : 'rgba(40, 6, 12, 0.14)';
+    ctx.shadowBlur = 6;
+    ctx.shadowOffsetY = 2;
+
+    ctx.drawImage(img, dims.sideMargin, currentY, dims.photoWidth, dims.photoHeight);
+    ctx.restore();
+
+    // Emulsion photo border
+    if (photoBorder) {
+      ctx.strokeStyle = photoBorder;
+      ctx.lineWidth = isSolid ? 2 : 1;
+      ctx.strokeRect(dims.sideMargin, currentY, dims.photoWidth, dims.photoHeight);
+    }
+
+    currentY += dims.photoHeight + dims.photoGap;
+  }
+
+  // 7. Static Elements in Footer (Divider rule, Date Stamp, Arcade Mark)
+  ctx.save();
+  ctx.textAlign = 'center';
+
+  if (dividerColor) {
+    ctx.strokeStyle = dividerColor;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(dims.sideMargin + 15, dims.footerStartY);
+    ctx.lineTo(dims.width - (dims.sideMargin + 15), dims.footerStartY);
+    ctx.stroke();
+  }
+
+  ctx.fillStyle = textColor;
+  ctx.font = '13px "Special Elite", "Courier New", monospace';
+  ctx.letterSpacing = '1.5px';
+  ctx.fillText(`• ${dateText.toUpperCase()} •`, dims.width / 2, dims.dateY);
+
+  ctx.fillStyle = arcadeColor;
+  ctx.font = 'bold 11px "Bebas Neue", sans-serif';
+  ctx.letterSpacing = '2.5px';
+  ctx.fillText('THE VINTAGE BOOTH • NO. 44', dims.width / 2, dims.arcadeY);
+
+  ctx.restore();
+
+  return canvas;
+}
+
+/**
  * Renders the final photo strip canvas with the latest caption text.
  * Returns the HTMLCanvasElement directly for high-resolution Blob export.
  *
- * @param {HTMLCanvasElement} baseCanvas - Canvas from composeBasePhotoStrip
+ * @param {HTMLCanvasElement} baseCanvas - Canvas from composeBasePhotoStrip or composeCustomPhotoStrip
  * @param {string} caption - Current user-entered caption
- * @param {Object} options - { designId, solidColorId, widthId }
+ * @param {Object} options - { designId, solidColorId, widthId, captionY }
  * @returns {HTMLCanvasElement|null}
  */
 export function renderFinalPhotoStripCanvas(baseCanvas, caption = '', options = {}) {
@@ -600,7 +851,7 @@ export function renderFinalPhotoStripCanvas(baseCanvas, caption = '', options = 
 
   if (!ctx) return null;
 
-  // 1. Draw base strip (paper, pattern, 4 photos, static footer)
+  // 1. Draw base strip (paper, pattern, photos, static footer)
   ctx.drawImage(baseCanvas, 0, 0);
 
   // 2. Draw live caption in Special Elite font with design/solid color's caption color
@@ -608,13 +859,14 @@ export function renderFinalPhotoStripCanvas(baseCanvas, caption = '', options = 
   if (trimmed.length > 0) {
     const isSolid = designPreset.id === 'solid_colors';
     const captionColor = isSolid ? solidColorPreset.captionColor : designPreset.captionColor;
+    const captionY = options.captionY || baseCanvas.captionY || widthPreset.captionY;
 
     ctx.save();
     ctx.textAlign = 'center';
     ctx.fillStyle = captionColor;
     ctx.font = '15px "Special Elite", "Courier New", monospace';
     ctx.letterSpacing = '1px';
-    ctx.fillText(trimmed, finalCanvas.width / 2, widthPreset.captionY);
+    ctx.fillText(trimmed, finalCanvas.width / 2, captionY);
     ctx.restore();
   }
 

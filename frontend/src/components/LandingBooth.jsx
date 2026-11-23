@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function LandingBooth({ onStepInside }) {
+export default function LandingBooth({ onStepInside, onOpenStudio, onOpenPoses }) {
   return (
     <main className="landing-stage">
       {/* Warm Ambient Sconce Lighting */}
@@ -99,6 +99,46 @@ export default function LandingBooth({ onStepInside }) {
                 </div>
               </div>
             </div>
+
+            {/* Create A Strip Portal: Import photos directly from device */}
+            {onOpenStudio && (
+              <div className="booth-studio-portal-wrap">
+                <button
+                  type="button"
+                  className="booth-studio-portal-btn"
+                  onClick={onOpenStudio}
+                  title="Create a custom strip from device photos"
+                  aria-label="Create a strip by importing photos"
+                >
+                  <span className="portal-film-icon">🎞️</span>
+                  <div className="portal-text-block">
+                    <span className="portal-title">CREATE A STRIP</span>
+                    <span className="portal-subtitle">IMPORT PHOTOS • 2 TO 4 SHOTS</span>
+                  </div>
+                  <span className="portal-arrow">▶</span>
+                </button>
+              </div>
+            )}
+
+            {/* Pose Inspiration Portal: Browse curated poses & challenges */}
+            {onOpenPoses && (
+              <div className="booth-poses-portal-wrap">
+                <button
+                  type="button"
+                  className="booth-poses-portal-btn"
+                  onClick={onOpenPoses}
+                  title="Browse Pose Inspiration & 4-Shot Challenges"
+                  aria-label="Browse Pose Inspiration Lookbook"
+                >
+                  <span className="portal-bulb-icon">💡</span>
+                  <div className="portal-text-block">
+                    <span className="portal-title">POSE LOOKBOOK</span>
+                    <span className="portal-subtitle">SOLO, COUPLES & GROUPS • 4-SHOT IDEAS</span>
+                  </div>
+                  <span className="portal-arrow">▶</span>
+                </button>
+              </div>
+            )}
           </aside>
 
           {/* RIGHT SIDE: Walk-In Doorway with Hanging Velvet Curtain */}
