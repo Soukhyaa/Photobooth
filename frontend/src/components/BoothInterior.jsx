@@ -61,15 +61,21 @@ export default function BoothInterior({
   const countdownTimerRef = useRef(null);
   const sequenceTimerRef = useRef(null);
   const livePreRecordTimerRef = useRef(null);
+  const livePostRecordTimerRef = useRef(null);
   const runCountdownRef = useRef(null);
   const takeSinglePhotoRef = useRef(null);
 
   // Mutable refs to keep countdown and capture callbacks immune to stale closures & re-render cancels
+  const captureStateRef = useRef(captureState);
   const activeModeRef = useRef('still');
   const activeFilterRef = useRef(activeFilter);
   const cameraStatusRef = useRef(cameraStatus);
   const liveClipsRef = useRef(liveClips);
   const capturedPhotosRef = useRef(capturedPhotos);
+
+  useEffect(() => {
+    captureStateRef.current = captureState;
+  }, [captureState]);
 
   useEffect(() => {
     capturedPhotosRef.current = capturedPhotos;
@@ -132,6 +138,7 @@ export default function BoothInterior({
       if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
       if (sequenceTimerRef.current) clearTimeout(sequenceTimerRef.current);
       if (livePreRecordTimerRef.current) clearTimeout(livePreRecordTimerRef.current);
+      if (livePostRecordTimerRef.current) clearTimeout(livePostRecordTimerRef.current);
       livePhotoManager.cancel();
       revokeLiveClipUrls(liveClipsRef.current);
     };
@@ -139,7 +146,6 @@ export default function BoothInterior({
 
   const handleFilterClick = (filter) => {
     if (captureState !== 'idle') return; // Locked during capture or mode selection
-    soundEngine.playBeep(false);
     setActiveFilter(filter);
     if (onSelectFilter) {
       onSelectFilter(filter);
@@ -160,6 +166,10 @@ export default function BoothInterior({
       clearTimeout(livePreRecordTimerRef.current);
       livePreRecordTimerRef.current = null;
     }
+    if (livePostRecordTimerRef.current) {
+      clearTimeout(livePostRecordTimerRef.current);
+      livePostRecordTimerRef.current = null;
+    }
     livePhotoManager.cancel();
     compositionVersionRef.current += 1;
     setIsRecomposingStrip(false);
@@ -177,6 +187,50 @@ export default function BoothInterior({
     setSelectedWidthId('wide');
   }, []);
 
+  // Handle visibility changes to cancel countdown/capture sequences when tab is hidden
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (typeof document === 'undefined') return;
+
+      if (document.hidden) {
+        const state = captureStateRef.current;
+        // If an active capture sequence is underway or mode selection is open, cancel immediately
+        if (
+          state === 'countdown' ||
+          state === 'flash' ||
+          state === 'pause' ||
+          state === 'selecting_mode'
+        ) {
+          handleCancelCapture();
+        } else {
+          // Safeguard: ensure any pending sequence timers are cleared
+          if (countdownTimerRef.current) {
+            clearInterval(countdownTimerRef.current);
+            countdownTimerRef.current = null;
+          }
+          if (sequenceTimerRef.current) {
+            clearTimeout(sequenceTimerRef.current);
+            sequenceTimerRef.current = null;
+          }
+          if (livePreRecordTimerRef.current) {
+            clearTimeout(livePreRecordTimerRef.current);
+            livePreRecordTimerRef.current = null;
+          }
+          if (livePostRecordTimerRef.current) {
+            clearTimeout(livePostRecordTimerRef.current);
+            livePostRecordTimerRef.current = null;
+          }
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [handleCancelCapture]);
+
   // Retake entire set from review screen
   const handleRetakeSet = useCallback(() => {
     if (countdownTimerRef.current) {
@@ -190,6 +244,10 @@ export default function BoothInterior({
     if (livePreRecordTimerRef.current) {
       clearTimeout(livePreRecordTimerRef.current);
       livePreRecordTimerRef.current = null;
+    }
+    if (livePostRecordTimerRef.current) {
+      clearTimeout(livePostRecordTimerRef.current);
+      livePostRecordTimerRef.current = null;
     }
     livePhotoManager.cancel();
     compositionVersionRef.current += 1;
@@ -223,12 +281,21 @@ export default function BoothInterior({
           photoIndex
         );
 
+        // Check if tab became hidden or capture was cancelled while snapshot was resolving
+        if (
+          (typeof document !== 'undefined' && document.hidden) ||
+          captureStateRef.current === 'idle'
+        ) {
+          setIsFlashing(false);
+          return;
+        }
+
         const updatedPhotos = [...existingPhotos, snapshot];
         setCapturedPhotos(updatedPhotos);
 
         // In Live Photos mode: record 1.2s post-shutter reaction, then package clip
         if (activeModeRef.current === 'live') {
-          setTimeout(async () => {
+          livePostRecordTimerRef.current = setTimeout(async () => {
             try {
               const clip = await livePhotoManager.stopRecording();
               if (clip) {
@@ -241,6 +308,8 @@ export default function BoothInterior({
               }
             } catch (clipErr) {
               console.warn('Live clip packaging warning (non-fatal):', clipErr);
+            } finally {
+              livePostRecordTimerRef.current = null;
             }
           }, 1200);
         }
@@ -248,6 +317,13 @@ export default function BoothInterior({
         // Flash lasts 280ms
         sequenceTimerRef.current = setTimeout(() => {
           setIsFlashing(false);
+
+          if (
+            (typeof document !== 'undefined' && document.hidden) ||
+            captureStateRef.current === 'idle'
+          ) {
+            return;
+          }
 
           if (photoIndex < 4) {
             // Pause approximately 3 seconds between consecutive shots
@@ -258,6 +334,12 @@ export default function BoothInterior({
             setCountdownValue(3);
 
             sequenceTimerRef.current = setTimeout(() => {
+              if (
+                (typeof document !== 'undefined' && document.hidden) ||
+                captureStateRef.current === 'idle'
+              ) {
+                return;
+              }
               if (runCountdownRef.current) {
                 runCountdownRef.current(nextIndex, updatedPhotos);
               }
@@ -267,6 +349,12 @@ export default function BoothInterior({
             // In live mode, allow 1500ms so clip 4 finishes stopping (at 1200ms) and packages
             const completionDelay = activeModeRef.current === 'live' ? 1500 : 500;
             sequenceTimerRef.current = setTimeout(() => {
+              if (
+                (typeof document !== 'undefined' && document.hidden) ||
+                captureStateRef.current === 'idle'
+              ) {
+                return;
+              }
               // Pre-compose the base strip canvas in background using unified versioned pipeline
               recompileBaseStrip(selectedDesignId, selectedSolidColorId, selectedWidthId, updatedPhotos);
 
@@ -327,13 +415,20 @@ export default function BoothInterior({
           // Reached 0: flash and capture!
           clearInterval(countdownTimerRef.current);
           countdownTimerRef.current = null;
+          if (
+            (typeof document !== 'undefined' && document.hidden) ||
+            captureStateRef.current === 'idle'
+          ) {
+            handleCancelCapture();
+            return;
+          }
           if (takeSinglePhotoRef.current) {
             takeSinglePhotoRef.current(photoIndex, existingPhotos);
           }
         }
       }, 1000);
     },
-    [streamRef]
+    [handleCancelCapture, streamRef]
   );
 
   runCountdownRef.current = runCountdownForPhoto;
@@ -342,7 +437,6 @@ export default function BoothInterior({
   // Opens the mode selection dialog
   const handleReadyClick = () => {
     if (captureState !== 'idle') return;
-    soundEngine.playBeep(false);
     setCaptureState('selecting_mode');
     livePhotoManager.warmUp({
       activeFilter: activeFilterRef.current,
@@ -353,7 +447,6 @@ export default function BoothInterior({
   // Step 3 in sequence: user selects mode ("Still Photos" or "Live Photos")
   // Begins the 4-shot capture sequence immediately
   const handleSelectModeAndStart = (mode) => {
-    soundEngine.playBeep(false);
     activeModeRef.current = mode;
     setCaptureMode(mode);
     setCapturedPhotos([]);
@@ -372,7 +465,6 @@ export default function BoothInterior({
   // Customization Step: Switch strip design preset
   const handleSelectDesign = useCallback(
     (designId) => {
-      soundEngine.playLeverClick?.();
       setSelectedDesignId(designId);
       recompileBaseStrip(designId, selectedSolidColorId, selectedWidthId);
     },
@@ -382,7 +474,6 @@ export default function BoothInterior({
   // Customization Step: Switch solid color in Solid Colours theme
   const handleSelectSolidColor = useCallback(
     (colorId) => {
-      soundEngine.playLeverClick?.();
       setSelectedSolidColorId(colorId);
       setSelectedDesignId('solid_colors');
       recompileBaseStrip('solid_colors', colorId, selectedWidthId);
@@ -393,7 +484,6 @@ export default function BoothInterior({
   // Customization Step: Switch strip width format (Classic Wide vs Slim Strip)
   const handleSelectWidth = useCallback(
     (widthId) => {
-      soundEngine.playLeverClick?.();
       setSelectedWidthId(widthId);
       recompileBaseStrip(selectedDesignId, selectedSolidColorId, widthId);
     },
@@ -401,15 +491,14 @@ export default function BoothInterior({
   );
 
   // Step 4 in sequence: user clicks "GET MY STRIP"
-  // Starts mechanical printing & dispensing animation with authentic sounds
+  // Starts mechanical printing & dispensing animation
   const handleGetMyStrip = () => {
     if (captureState !== 'ready_to_dispense') return;
-    soundEngine.playPrintingGear();
     setCaptureState('dispensing');
 
-    // Strip emerges over ~2.6 seconds, then paper drop sound fires as it reaches the tray
+    // Strip emerges over ~2.6 seconds
     setTimeout(() => {
-      soundEngine.playTrayDrop();
+      // Paper drop animation settling
     }, 2600);
 
     // Completely settled in collection tray at 3.0 seconds
@@ -421,7 +510,6 @@ export default function BoothInterior({
   // Step 5 in sequence: user clicks/pulls the strip from collection window
   // Opens the full preview and download workspace
   const handleCollectStrip = () => {
-    soundEngine.playCurtain();
     setCaptureState('collected');
   };
 

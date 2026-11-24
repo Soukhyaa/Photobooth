@@ -113,7 +113,11 @@ export const soundEngine = {
     osc.stop(now + duration);
   },
 
-  // 3. Authentic Vintage Camera Shutter & Subtle Flash
+  // 3. Authentic Physical Camera Shutter Click
+  // Two-phase mechanical focal-plane / leaf shutter actuation:
+  // Phase 1 (0ms): Initial release blade snap + subtle chassis body thump
+  // Phase 2 (45ms): Shutter curtain catch & mechanical latch click
+  // Crisp, tactile, and completely mechanical — no electronic tones, sine beeps, or synthetic chirps.
   playShutter() {
     if (isMuted) return;
     const ctx = getAudioContext();
@@ -121,174 +125,103 @@ export const soundEngine = {
 
     const now = ctx.currentTime;
 
-    // First shutter leaf open (soft acoustic click)
-    const osc1 = ctx.createOscillator();
-    const gain1 = ctx.createGain();
-    const filter1 = ctx.createBiquadFilter();
+    // --- PHASE 1: Initial Shutter Blade Release & Snap (t = 0ms) ---
+    // High-frequency tactile mechanical snap (metal/resin leaf click)
+    const snapDuration = 0.025;
+    const snapBuffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * snapDuration), ctx.sampleRate);
+    const snapData = snapBuffer.getChannelData(0);
+    for (let i = 0; i < snapData.length; i++) {
+      // High-density transient burst with exponential decay
+      const env = Math.exp(-i / (ctx.sampleRate * 0.004));
+      snapData[i] = (Math.random() * 2 - 1) * env;
+    }
+    const snapSource = ctx.createBufferSource();
+    snapSource.buffer = snapBuffer;
 
-    filter1.type = 'bandpass';
-    filter1.frequency.setValueAtTime(750, now);
-    filter1.Q.value = 2.0;
+    const snapFilter = ctx.createBiquadFilter();
+    snapFilter.type = 'bandpass';
+    snapFilter.frequency.setValueAtTime(3400, now);
+    snapFilter.Q.value = 2.2;
 
-    osc1.type = 'triangle';
-    osc1.frequency.setValueAtTime(240, now);
-    osc1.frequency.exponentialRampToValueAtTime(80, now + 0.04);
+    const snapGain = ctx.createGain();
+    snapGain.gain.setValueAtTime(0.35, now);
+    snapGain.gain.exponentialRampToValueAtTime(0.0001, now + snapDuration);
 
-    gain1.gain.setValueAtTime(0.001, now);
-    gain1.gain.linearRampToValueAtTime(0.18, now + 0.005);
-    gain1.gain.exponentialRampToValueAtTime(0.0001, now + 0.05);
+    snapSource.connect(snapFilter);
+    snapFilter.connect(snapGain);
+    snapGain.connect(ctx.destination);
+    snapSource.start(now);
 
-    osc1.connect(filter1);
-    filter1.connect(gain1);
-    gain1.connect(ctx.destination);
+    // Subtle chassis body resonance (low acoustic mechanical thump)
+    const bodyOsc = ctx.createOscillator();
+    const bodyGain = ctx.createGain();
+    const bodyFilter = ctx.createBiquadFilter();
 
-    osc1.start(now);
-    osc1.stop(now + 0.06);
+    bodyFilter.type = 'lowpass';
+    bodyFilter.frequency.setValueAtTime(220, now);
 
-    // Second shutter leaf close (subtle mechanical snap 45ms later)
-    const osc2 = ctx.createOscillator();
-    const gain2 = ctx.createGain();
-    const filter2 = ctx.createBiquadFilter();
+    bodyOsc.type = 'triangle';
+    bodyOsc.frequency.setValueAtTime(150, now);
+    bodyOsc.frequency.exponentialRampToValueAtTime(40, now + 0.035);
 
-    filter2.type = 'bandpass';
-    filter2.frequency.setValueAtTime(900, now + 0.045);
-    filter2.Q.value = 2.5;
+    bodyGain.gain.setValueAtTime(0.22, now);
+    bodyGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.035);
 
-    osc2.type = 'triangle';
-    osc2.frequency.setValueAtTime(280, now + 0.045);
-    osc2.frequency.exponentialRampToValueAtTime(90, now + 0.09);
+    bodyOsc.connect(bodyFilter);
+    bodyFilter.connect(bodyGain);
+    bodyGain.connect(ctx.destination);
 
-    gain2.gain.setValueAtTime(0.001, now + 0.045);
-    gain2.gain.linearRampToValueAtTime(0.14, now + 0.05);
-    gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.1);
+    bodyOsc.start(now);
+    bodyOsc.stop(now + 0.04);
 
-    osc2.connect(filter2);
-    filter2.connect(gain2);
-    gain2.connect(ctx.destination);
+    // --- PHASE 2: Shutter Blade Catch / Curtain Closure (t = 45ms) ---
+    // The second tactile click of the mechanical focal plane curtain hitting the stop
+    const catchTime = now + 0.045;
+    const catchDuration = 0.03;
+    const catchBuffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * catchDuration), ctx.sampleRate);
+    const catchData = catchBuffer.getChannelData(0);
+    for (let i = 0; i < catchData.length; i++) {
+      const env = Math.exp(-i / (ctx.sampleRate * 0.005));
+      catchData[i] = (Math.random() * 2 - 1) * env;
+    }
+    const catchSource = ctx.createBufferSource();
+    catchSource.buffer = catchBuffer;
 
-    osc2.start(now + 0.045);
-    osc2.stop(now + 0.11);
+    const catchFilter = ctx.createBiquadFilter();
+    catchFilter.type = 'bandpass';
+    catchFilter.frequency.setValueAtTime(2600, catchTime);
+    catchFilter.Q.value = 2.0;
 
-    // Subtle, gentle flash capacitor whisper
-    const oscFlash = ctx.createOscillator();
-    const gainFlash = ctx.createGain();
-    const filterFlash = ctx.createBiquadFilter();
+    const catchGain = ctx.createGain();
+    catchGain.gain.setValueAtTime(0.28, catchTime);
+    catchGain.gain.exponentialRampToValueAtTime(0.0001, catchTime + catchDuration);
 
-    filterFlash.type = 'lowpass';
-    filterFlash.frequency.setValueAtTime(1800, now + 0.08);
+    catchSource.connect(catchFilter);
+    catchFilter.connect(catchGain);
+    catchGain.connect(ctx.destination);
+    catchSource.start(catchTime);
 
-    oscFlash.type = 'sine';
-    oscFlash.frequency.setValueAtTime(900, now + 0.08);
-    oscFlash.frequency.exponentialRampToValueAtTime(2200, now + 0.35);
+    // Secondary subtle mechanical click transient (blade catch latch)
+    const latchOsc = ctx.createOscillator();
+    const latchGain = ctx.createGain();
+    const latchFilter = ctx.createBiquadFilter();
 
-    gainFlash.gain.setValueAtTime(0.001, now + 0.08);
-    gainFlash.gain.linearRampToValueAtTime(0.025, now + 0.12);
-    gainFlash.gain.exponentialRampToValueAtTime(0.0001, now + 0.38);
+    latchFilter.type = 'bandpass';
+    latchFilter.frequency.setValueAtTime(1200, catchTime);
+    latchFilter.Q.value = 3.0;
 
-    oscFlash.connect(filterFlash);
-    filterFlash.connect(gainFlash);
-    gainFlash.connect(ctx.destination);
+    latchOsc.type = 'triangle';
+    latchOsc.frequency.setValueAtTime(320, catchTime);
+    latchOsc.frequency.exponentialRampToValueAtTime(80, catchTime + 0.025);
 
-    oscFlash.start(now + 0.08);
-    oscFlash.stop(now + 0.4);
-  },
+    latchGain.gain.setValueAtTime(0.12, catchTime);
+    latchGain.gain.exponentialRampToValueAtTime(0.0001, catchTime + 0.025);
 
-  // 4. Gentle Mechanical Printer Whirr
-  playPrintingGear() {
-    if (isMuted) return;
-    const ctx = getAudioContext();
-    if (!ctx) return;
+    latchOsc.connect(latchFilter);
+    latchFilter.connect(latchGain);
+    latchGain.connect(ctx.destination);
 
-    const now = ctx.currentTime;
-    const duration = 2.2;
-
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    const filter = ctx.createBiquadFilter();
-
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(260, now);
-
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(110, now);
-    osc.frequency.linearRampToValueAtTime(130, now + 0.6);
-    osc.frequency.linearRampToValueAtTime(115, now + 1.8);
-
-    gain.gain.setValueAtTime(0.001, now);
-    gain.gain.linearRampToValueAtTime(0.07, now + 0.15);
-    gain.gain.setValueAtTime(0.07, now + duration - 0.3);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-
-    osc.connect(filter);
-    filter.connect(gain);
-    gain.connect(ctx.destination);
-
-    osc.start(now);
-    osc.stop(now + duration);
-  },
-
-  // 5. Soft Paper Drop
-  playTrayDrop() {
-    if (isMuted) return;
-    const ctx = getAudioContext();
-    if (!ctx) return;
-
-    const now = ctx.currentTime;
-    const duration = 0.25;
-
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    const filter = ctx.createBiquadFilter();
-
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(320, now);
-
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(220, now);
-    osc.frequency.exponentialRampToValueAtTime(95, now + duration);
-
-    gain.gain.setValueAtTime(0.001, now);
-    gain.gain.linearRampToValueAtTime(0.08, now + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-
-    osc.connect(filter);
-    filter.connect(gain);
-    gain.connect(ctx.destination);
-
-    osc.start(now);
-    osc.stop(now + duration);
-  },
-
-  // 6. Vintage Mechanical Lever / Rotary Dial Click
-  playLeverClick() {
-    if (isMuted) return;
-    const ctx = getAudioContext();
-    if (!ctx) return;
-
-    const now = ctx.currentTime;
-    const duration = 0.028; // ~28ms subtle vintage mechanical click
-
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    const filter = ctx.createBiquadFilter();
-
-    filter.type = 'bandpass';
-    filter.frequency.setValueAtTime(1100, now);
-    filter.Q.value = 2.5;
-
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(180, now);
-    osc.frequency.exponentialRampToValueAtTime(50, now + duration);
-
-    gain.gain.setValueAtTime(0.001, now);
-    gain.gain.linearRampToValueAtTime(0.12, now + 0.003);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-
-    osc.connect(filter);
-    filter.connect(gain);
-    gain.connect(ctx.destination);
-
-    osc.start(now);
-    osc.stop(now + duration);
+    latchOsc.start(catchTime);
+    latchOsc.stop(catchTime + 0.03);
   }
 };

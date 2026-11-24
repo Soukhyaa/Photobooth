@@ -13,7 +13,6 @@ import {
   triggerVideoDownload,
   getVideoFileExtension
 } from '../utils/liveRecorder';
-import { soundEngine } from '../utils/audio';
 import { saveMemory, dataUrlToBlob } from '../utils/api';
 
 export default function PhotoStripPreview({
@@ -59,7 +58,6 @@ export default function PhotoStripPreview({
 
   // Switch Design Preset via single authoritative parent handler
   const handleDesignSwitch = (designId) => {
-    soundEngine.playLeverClick?.();
     if (onDesignChange) {
       onDesignChange(designId);
     }
@@ -67,7 +65,6 @@ export default function PhotoStripPreview({
 
   // Switch Solid Color Preset (in Solid Colours theme) via single authoritative parent handler
   const handleSolidColorSwitch = (colorId) => {
-    soundEngine.playLeverClick?.();
     if (onSolidColorChange) {
       onSolidColorChange(colorId);
     }
@@ -75,7 +72,6 @@ export default function PhotoStripPreview({
 
   // Switch Width Format (Classic Wide vs Slim Strip) via single authoritative parent handler
   const handleWidthSwitch = (widthId) => {
-    soundEngine.playLeverClick?.();
     if (onWidthChange) {
       onWidthChange(widthId);
     }
@@ -83,8 +79,6 @@ export default function PhotoStripPreview({
 
   // 2. Download Composed Photo Strip (Pure Still Photograph Print with Selected Design)
   const handleDownloadStrip = async () => {
-    soundEngine.playTrayDrop();
-
     try {
       setDownloadNotice('Composing photo strip for download...');
       const canvas = await composeBasePhotoStrip(capturedPhotos, {
@@ -120,7 +114,6 @@ export default function PhotoStripPreview({
 
   // 3. Download Single Individual Photo (1 to 4)
   const handleDownloadSinglePhoto = (photo, index) => {
-    soundEngine.playTrayDrop();
     const filename = `vintage-booth-photo-${index + 1}.png`;
     triggerBrowserDownload(photo.dataUrl, filename);
     setDownloadNotice(`✓ Downloaded Photo ${index + 1} (${filename})!`);
@@ -129,7 +122,6 @@ export default function PhotoStripPreview({
 
   // 4. Download All 4 Individual Photos sequentially
   const handleDownloadAllIndividual = () => {
-    soundEngine.playTrayDrop();
     setDownloadNotice('✓ Downloading all 4 individual photos...');
     capturedPhotos.forEach((photo, idx) => {
       setTimeout(() => {
@@ -143,7 +135,6 @@ export default function PhotoStripPreview({
   // 5. Download Animated Live Photo Strip Video (Choice A)
   const handleDownloadLiveStrip = async () => {
     if (isGeneratingVideoStrip) return;
-    soundEngine.playPrintingGear();
     setIsGeneratingVideoStrip(true);
     setVideoProgressText('Developing Live Photo Strip Video... (0%)');
     setDownloadNotice('🎞️ Developing Live Photo Strip Video (MP4/WebM)...');
@@ -161,7 +152,6 @@ export default function PhotoStripPreview({
       });
 
       triggerVideoDownload(result.blob, result.filename);
-      soundEngine.playTrayDrop();
       setDownloadNotice(`✓ Downloaded Live Photo Strip (${result.filename})!`);
       setTimeout(() => setDownloadNotice(''), 4000);
     } catch (err) {
@@ -177,7 +167,6 @@ export default function PhotoStripPreview({
   // 6. Download Both Animated Video Strip and Static PNG Strip (Choice C)
   const handleDownloadBothStrips = async () => {
     if (isGeneratingVideoStrip) return;
-    soundEngine.playPrintingGear();
     setIsGeneratingVideoStrip(true);
     setVideoProgressText('Developing Both Formats... (0%)');
     setDownloadNotice('✨ Developing Live Photo Strip Video & Composing Still PNG...');
@@ -213,7 +202,6 @@ export default function PhotoStripPreview({
           const designSlug = selectedDesignId === 'solid_colors' ? `solid-${selectedSolidColorId}` : selectedDesignId;
           const pngFilename = `vintage-booth-strip-${designSlug}-${selectedWidthId}.png`;
           triggerBrowserDownload(finalCanvas, pngFilename);
-          soundEngine.playTrayDrop();
           setDownloadNotice(`✓ Downloaded Both: ${result.filename} & ${pngFilename}!`);
           setTimeout(() => setDownloadNotice(''), 4500);
         } catch (pngErr) {
@@ -232,7 +220,6 @@ export default function PhotoStripPreview({
 
   // 7. Download Single Live Photo Clip (Playable Video)
   const handleDownloadLiveClip = (clip, index) => {
-    soundEngine.playTrayDrop();
     const targetClip = clip || (liveClips || []).find((c) => c.id === index);
     if (!targetClip) {
       setDownloadNotice(`⚠️ Live Clip ${index} is not ready yet.`);
@@ -249,7 +236,6 @@ export default function PhotoStripPreview({
 
   // 8. Download All Live Clips sequentially
   const handleDownloadAllLiveClips = () => {
-    soundEngine.playTrayDrop();
     setDownloadNotice('✓ Downloading all 4 Live Photo video clips...');
     [1, 2, 3, 4].forEach((num, idx) => {
       const clip = (liveClips || []).find((c) => c.id === num);
@@ -267,7 +253,6 @@ export default function PhotoStripPreview({
 
   // 7. Interactive Click-to-Play Live Photo directly inside the strip photo frame
   const handleToggleLiveFrame = (photoId) => {
-    soundEngine.playBeep(false);
     setActivePlayingPhotoId((prev) => (prev === photoId ? null : photoId));
   };
 
@@ -330,7 +315,6 @@ export default function PhotoStripPreview({
       setIsSavedToMemories(true);
       setSaveStatusMessage('✓ Saved to My Memories! Access anytime via the header.');
       setDownloadNotice('✓ Photo strip saved to your private album!');
-      soundEngine.playTrayDrop?.();
       setTimeout(() => setDownloadNotice(''), 4500);
     } catch (err) {
       console.error('Error saving to memories:', err);

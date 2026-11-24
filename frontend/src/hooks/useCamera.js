@@ -13,6 +13,21 @@ export function useCamera() {
   const [facingMode, setFacingMode] = useState('user'); // 'user' | 'environment'
   const [hasMultipleCameras, setHasMultipleCameras] = useState(false);
 
+  // Keep refs updated for event listeners & asynchronous callbacks to prevent stale closures
+  const cameraStatusRef = useRef(cameraStatus);
+  const facingModeRef = useRef(facingMode);
+  const wasActiveBeforeHideRef = useRef(null);
+  const isMountedRef = useRef(true);
+  const isStartingCameraRef = useRef(false);
+
+  useEffect(() => {
+    cameraStatusRef.current = cameraStatus;
+  }, [cameraStatus]);
+
+  useEffect(() => {
+    facingModeRef.current = facingMode;
+  }, [facingMode]);
+
   // Check for camera availability
   const checkDevices = useCallback(async () => {
     if (!navigator?.mediaDevices?.enumerateDevices) return;
@@ -25,15 +40,16 @@ export function useCamera() {
     }
   }, []);
 
-  // Stop current active stream
+  // Stop current active stream and release hardware tracks safely
   const stopStream = useCallback(() => {
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => {
+      const stream = streamRef.current;
+      streamRef.current = null;
+      stream.getTracks().forEach((track) => {
         try {
           track.stop();
         } catch {}
       });
-      streamRef.current = null;
     }
     if (videoRef.current) {
       videoRef.current.srcObject = null;
@@ -42,8 +58,10 @@ export function useCamera() {
   }, []);
 
   // Start live webcam stream
-  const startCamera = useCallback(async (mode = facingMode) => {
+  const startCamera = useCallback(async (mode) => {
     stopStream();
+
+    const targetMode = mode || facingModeRef.current;
 
     // Do not start camera if document/tab is currently hidden
     if (typeof document !== 'undefined' && document.hidden) {
@@ -51,10 +69,14 @@ export function useCamera() {
       return;
     }
 
+    if (!isMountedRef.current) return;
+
+    isStartingCameraRef.current = true;
     setCameraStatus('requesting');
     setErrorMessage('');
 
     if (!navigator?.mediaDevices?.getUserMedia) {
+      isStartingCameraRef.current = false;
       setCameraStatus('error');
       setErrorMessage('Camera access is not supported by this browser.');
       return;
@@ -65,21 +87,24 @@ export function useCamera() {
         video: {
           width: { ideal: 1280 },
           height: { ideal: 960 },
-          facingMode: mode
+          facingMode: targetMode
         },
         audio: false
       };
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
 
-      // Race condition check: Did tab become hidden while waiting for getUserMedia?
-      if (typeof document !== 'undefined' && document.hidden) {
+      // Race condition check: Did tab become hidden or component unmount while waiting for getUserMedia?
+      if (!isMountedRef.current || (typeof document !== 'undefined' && document.hidden)) {
         stream.getTracks().forEach((track) => {
           try {
             track.stop();
           } catch {}
         });
-        setCameraStatus('idle');
+        isStartingCameraRef.current = false;
+        if (isMountedRef.current) {
+          setCameraStatus('idle');
+        }
         return;
       }
 
@@ -88,13 +113,17 @@ export function useCamera() {
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         videoRef.current.onloadedmetadata = () => {
-          videoRef.current.play().catch(() => {});
+          if (videoRef.current) {
+            videoRef.current.play().catch(() => {});
+          }
         };
       }
 
+      isStartingCameraRef.current = false;
       setCameraStatus('active');
       await checkDevices();
     } catch (err) {
+      isStartingCameraRef.current = false;
       console.warn('Camera access issue:', err);
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
         setCameraStatus('denied');
@@ -104,14 +133,14 @@ export function useCamera() {
         setErrorMessage('Unable to connect to camera. You can use Test Mode instead.');
       }
     }
-  }, [facingMode, stopStream, checkDevices]);
+  }, [stopStream, checkDevices]);
 
   // Flip front/back camera
   const flipCamera = useCallback(() => {
-    const nextMode = facingMode === 'user' ? 'environment' : 'user';
+    const nextMode = facingModeRef.current === 'user' ? 'environment' : 'user';
     setFacingMode(nextMode);
     startCamera(nextMode);
-  }, [facingMode, startCamera]);
+  }, [startCamera]);
 
   // Enable synthetic test portrait mode (fallback)
   const enableMockMode = useCallback(() => {
@@ -119,12 +148,53 @@ export function useCamera() {
     setCameraStatus('mock');
   }, [stopStream]);
 
-  // Cleanup on unmount
+  // Visibility change handling & unmount cleanup
   useEffect(() => {
+    isMountedRef.current = true;
+
+    const handleVisibilityChange = () => {
+      if (typeof document === 'undefined') return;
+
+      if (document.hidden) {
+        // Document became hidden: record state before stopping
+        if (
+          cameraStatusRef.current === 'active' ||
+          isStartingCameraRef.current ||
+          cameraStatusRef.current === 'requesting'
+        ) {
+          wasActiveBeforeHideRef.current = 'active';
+        } else if (cameraStatusRef.current === 'mock') {
+          wasActiveBeforeHideRef.current = 'mock';
+        } else {
+          wasActiveBeforeHideRef.current = null;
+        }
+
+        // Release hardware camera tracks and clear stream reference safely
+        stopStream();
+      } else {
+        // Document became visible again
+        const previousState = wasActiveBeforeHideRef.current;
+        wasActiveBeforeHideRef.current = null;
+
+        // Only restore if component is still mounted and camera was previously active
+        if (isMountedRef.current) {
+          if (previousState === 'active') {
+            startCamera(facingModeRef.current);
+          } else if (previousState === 'mock') {
+            enableMockMode();
+          }
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
+      isMountedRef.current = false;
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       stopStream();
     };
-  }, [stopStream]);
+  }, [startCamera, stopStream, enableMockMode]);
 
   // Get active stream
   const getStream = useCallback(() => streamRef.current, []);

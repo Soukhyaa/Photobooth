@@ -10,6 +10,7 @@ from fastapi import (
     File,
     Form,
     HTTPException,
+    Response,
     UploadFile,
     status,
 )
@@ -27,6 +28,7 @@ from app.schemas import (
     MemorySessionSummary,
     PhotoFrameResponse,
 )
+from app.services.cleanup import run_expiration_cleanup_if_needed
 from app.services.image_processor import (
     generate_thumbnail,
     get_image_extension,
@@ -108,24 +110,26 @@ def format_memory_detail(mem: MemorySession) -> MemorySessionDetail:
     summary = format_memory_summary(mem)
     frames_resp = []
     for f in sorted(mem.frames, key=lambda x: x.photo_index):
+        has_video = (f.live_video_data is not None) or bool(f.live_video_path)
         frames_resp.append(
             PhotoFrameResponse(
                 photo_index=f.photo_index,
                 photo_url=f"/api/memories/{mem.id}/photos/{f.photo_index}",
                 live_video_url=(
                     f"/api/memories/{mem.id}/videos/{f.photo_index}"
-                    if f.live_video_path
+                    if has_video
                     else None
                 ),
                 duration=f.duration,
             )
         )
 
+    has_strip_video = (mem.live_strip_video_data is not None) or bool(mem.live_strip_video_path)
     return MemorySessionDetail(
         **summary.model_dump(),
         live_strip_video_url=(
             f"/api/memories/{mem.id}/strip-video"
-            if mem.live_strip_video_path
+            if has_strip_video
             else None
         ),
         frames=frames_resp,
@@ -244,22 +248,37 @@ async def create_memory(
     created_at = utcnow()
     expires_at = created_at + timedelta(days=settings.MEMORY_EXPIRATION_DAYS)
 
-    # 9. Store assets on disk with rollback guard
+    # 9. Store assets: Primary in Neon PostgreSQL BYTEA, with fallback local cache
     try:
         strip_ext = get_image_extension(strip_fmt)
+        strip_mime = f"image/{strip_fmt.lower()}"
         strip_filename = f"strip_{uuid.uuid4().hex[:8]}.{strip_ext}"
-        strip_rel_path = save_memory_file(memory_id, strip_filename, strip_bytes)
 
+        thumb_mime = "image/webp"
         thumb_filename = f"thumb_{uuid.uuid4().hex[:8]}.webp"
-        thumb_rel_path = save_memory_file(memory_id, thumb_filename, thumb_bytes)
 
+        # Optional local cache write (non-fatal if disk is ephemeral/read-only)
+        strip_rel_path = None
+        thumb_rel_path = None
         live_strip_rel_path = None
+        try:
+            strip_rel_path = save_memory_file(memory_id, strip_filename, strip_bytes)
+            thumb_rel_path = save_memory_file(memory_id, thumb_filename, thumb_bytes)
+        except Exception:
+            pass
+
+        sv_bytes = None
+        sv_mime = None
         if strip_video_data:
             sv_ext, sv_bytes = strip_video_data
+            sv_mime = f"video/{sv_ext}"
             sv_filename = f"videos/live_strip_{uuid.uuid4().hex[:8]}.{sv_ext}"
-            live_strip_rel_path = save_memory_file(memory_id, sv_filename, sv_bytes)
+            try:
+                live_strip_rel_path = save_memory_file(memory_id, sv_filename, sv_bytes)
+            except Exception:
+                pass
 
-        # Database session record
+        # Database session record with binary media in Neon
         mem_session = MemorySession(
             id=memory_id,
             client_token_hash=client_token_hash,
@@ -272,35 +291,60 @@ async def create_memory(
             width_id=meta.width_id,
             filter_id=meta.filter_id,
             capture_mode=meta.capture_mode,
+            strip_image_data=strip_bytes,
+            strip_image_mime=strip_mime,
+            strip_thumbnail_data=thumb_bytes,
+            strip_thumbnail_mime=thumb_mime,
+            live_strip_video_data=sv_bytes,
+            live_strip_video_mime=sv_mime,
             strip_image_path=strip_rel_path,
             strip_thumbnail_path=thumb_rel_path,
             live_strip_video_path=live_strip_rel_path,
         )
         db.add(mem_session)
 
-        # Photo frame records
+        # Photo frame records with binary media in Neon
         for p_idx, p_fmt, p_bytes in photo_items:
             p_ext = get_image_extension(p_fmt)
+            p_mime = f"image/{p_fmt.lower()}"
             p_filename = f"photos/photo_{p_idx}_{uuid.uuid4().hex[:8]}.{p_ext}"
-            p_rel_path = save_memory_file(memory_id, p_filename, p_bytes)
+            p_rel_path = None
+            try:
+                p_rel_path = save_memory_file(memory_id, p_filename, p_bytes)
+            except Exception:
+                pass
 
             v_rel_path = None
+            c_bytes = None
+            c_mime = None
             if p_idx in clip_items:
                 c_ext, c_bytes = clip_items[p_idx]
+                c_mime = f"video/{c_ext}"
                 c_filename = f"videos/clip_{p_idx}_{uuid.uuid4().hex[:8]}.{c_ext}"
-                v_rel_path = save_memory_file(memory_id, c_filename, c_bytes)
+                try:
+                    v_rel_path = save_memory_file(memory_id, c_filename, c_bytes)
+                except Exception:
+                    pass
 
             frame = PhotoFrame(
                 session_id=memory_id,
                 photo_index=p_idx,
+                photo_image_data=p_bytes,
+                photo_image_mime=p_mime,
+                live_video_data=c_bytes,
+                live_video_mime=c_mime,
                 photo_image_path=p_rel_path,
                 live_video_path=v_rel_path,
-                duration=2.7 if v_rel_path else None,
+                duration=2.7 if c_bytes else None,
             )
             db.add(frame)
 
         db.commit()
         db.refresh(mem_session)
+
+        # Trigger request-time cleanup check
+        run_expiration_cleanup_if_needed(db)
+
         return format_memory_summary(mem_session)
 
     except Exception as exc:
@@ -322,6 +366,9 @@ def list_memories(
     client_token_hash: str = Depends(get_client_token_hash),
     db: Session = Depends(get_db),
 ):
+    # Trigger opportunistic request-time cleanup of expired records
+    run_expiration_cleanup_if_needed(db)
+
     now = utcnow()
     memories = (
         db.query(MemorySession)
@@ -382,21 +429,35 @@ def get_memory_strip(
         )
         .first()
     )
-    if not mem or not mem.strip_image_path:
+    if not mem:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Memory strip not found.",
         )
 
-    file_path = get_memory_file_path(memory_id, mem.strip_image_path)
-    if not file_path or not file_path.is_file():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Strip file not found on disk.",
+    # 1. Primary: Serve directly from PostgreSQL BYTEA
+    if mem.strip_image_data is not None:
+        media_type = mem.strip_image_mime or "image/png"
+        return Response(
+            content=mem.strip_image_data,
+            media_type=media_type,
+            headers={
+                "Content-Disposition": f'inline; filename="vintage-booth-strip-{memory_id[:8]}.png"',
+                "Cache-Control": "private, max-age=86400",
+            },
         )
 
-    media_type = "image/png" if file_path.suffix.lower() == ".png" else "image/jpeg"
-    return FileResponse(file_path, media_type=media_type, filename=f"vintage-booth-strip-{memory_id[:8]}.png")
+    # 2. Fallback: Local filesystem cache if available
+    if mem.strip_image_path:
+        file_path = get_memory_file_path(memory_id, mem.strip_image_path)
+        if file_path and file_path.is_file():
+            media_type = "image/png" if file_path.suffix.lower() == ".png" else "image/jpeg"
+            return FileResponse(file_path, media_type=media_type, filename=f"vintage-booth-strip-{memory_id[:8]}.png")
+
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Strip data not found in database or on disk.",
+    )
 
 
 @router.get(
@@ -418,20 +479,30 @@ def get_memory_thumbnail(
         )
         .first()
     )
-    if not mem or not mem.strip_thumbnail_path:
+    if not mem:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Thumbnail not found.",
         )
 
-    file_path = get_memory_file_path(memory_id, mem.strip_thumbnail_path)
-    if not file_path or not file_path.is_file():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Thumbnail file not found on disk.",
+    # 1. Primary: Serve from PostgreSQL BYTEA
+    if mem.strip_thumbnail_data is not None:
+        return Response(
+            content=mem.strip_thumbnail_data,
+            media_type=mem.strip_thumbnail_mime or "image/webp",
+            headers={"Cache-Control": "private, max-age=86400"},
         )
 
-    return FileResponse(file_path, media_type="image/webp")
+    # 2. Fallback: Local filesystem
+    if mem.strip_thumbnail_path:
+        file_path = get_memory_file_path(memory_id, mem.strip_thumbnail_path)
+        if file_path and file_path.is_file():
+            return FileResponse(file_path, media_type="image/webp")
+
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Thumbnail data not found in database or on disk.",
+    )
 
 
 @router.get(
@@ -465,21 +536,35 @@ def get_memory_photo(
         .filter(PhotoFrame.session_id == memory_id, PhotoFrame.photo_index == photo_index)
         .first()
     )
-    if not frame or not frame.photo_image_path:
+    if not frame:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Photo #{photo_index} not found.",
         )
 
-    file_path = get_memory_file_path(memory_id, frame.photo_image_path)
-    if not file_path or not file_path.is_file():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Photo file not found on disk.",
+    # 1. Primary: Serve from PostgreSQL BYTEA
+    if frame.photo_image_data is not None:
+        media_type = frame.photo_image_mime or "image/jpeg"
+        return Response(
+            content=frame.photo_image_data,
+            media_type=media_type,
+            headers={
+                "Content-Disposition": f'inline; filename="photo-{photo_index}.png"',
+                "Cache-Control": "private, max-age=86400",
+            },
         )
 
-    media_type = "image/png" if file_path.suffix.lower() == ".png" else "image/jpeg"
-    return FileResponse(file_path, media_type=media_type, filename=f"photo-{photo_index}.png")
+    # 2. Fallback: Local filesystem
+    if frame.photo_image_path:
+        file_path = get_memory_file_path(memory_id, frame.photo_image_path)
+        if file_path and file_path.is_file():
+            media_type = "image/png" if file_path.suffix.lower() == ".png" else "image/jpeg"
+            return FileResponse(file_path, media_type=media_type, filename=f"photo-{photo_index}.png")
+
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=f"Photo #{photo_index} data not found on server.",
+    )
 
 
 @router.get(
@@ -513,21 +598,36 @@ def get_memory_video(
         .filter(PhotoFrame.session_id == memory_id, PhotoFrame.photo_index == photo_index)
         .first()
     )
-    if not frame or not frame.live_video_path:
+    if not frame:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Live video for photo #{photo_index} not found.",
         )
 
-    file_path = get_memory_file_path(memory_id, frame.live_video_path)
-    if not file_path or not file_path.is_file():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Video file not found on disk.",
+    # 1. Primary: Serve from PostgreSQL BYTEA
+    if frame.live_video_data is not None:
+        media_type = frame.live_video_mime or "video/webm"
+        return Response(
+            content=frame.live_video_data,
+            media_type=media_type,
+            headers={
+                "Accept-Ranges": "bytes",
+                "Content-Disposition": f'inline; filename="clip-{photo_index}.webm"',
+                "Cache-Control": "private, max-age=86400",
+            },
         )
 
-    media_type = "video/mp4" if file_path.suffix.lower() == ".mp4" else "video/webm"
-    return FileResponse(file_path, media_type=media_type)
+    # 2. Fallback: Local filesystem
+    if frame.live_video_path:
+        file_path = get_memory_file_path(memory_id, frame.live_video_path)
+        if file_path and file_path.is_file():
+            media_type = "video/mp4" if file_path.suffix.lower() == ".mp4" else "video/webm"
+            return FileResponse(file_path, media_type=media_type)
+
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=f"Live video for photo #{photo_index} data not found on server.",
+    )
 
 
 @router.get(
@@ -549,21 +649,36 @@ def get_memory_strip_video(
         )
         .first()
     )
-    if not mem or not mem.live_strip_video_path:
+    if not mem:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Live strip video not found.",
         )
 
-    file_path = get_memory_file_path(memory_id, mem.live_strip_video_path)
-    if not file_path or not file_path.is_file():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Video strip file not found on disk.",
+    # 1. Primary: Serve from PostgreSQL BYTEA
+    if mem.live_strip_video_data is not None:
+        media_type = mem.live_strip_video_mime or "video/webm"
+        return Response(
+            content=mem.live_strip_video_data,
+            media_type=media_type,
+            headers={
+                "Accept-Ranges": "bytes",
+                "Content-Disposition": 'inline; filename="vintage-live-strip.mp4"',
+                "Cache-Control": "private, max-age=86400",
+            },
         )
 
-    media_type = "video/mp4" if file_path.suffix.lower() == ".mp4" else "video/webm"
-    return FileResponse(file_path, media_type=media_type, filename="vintage-live-strip.mp4")
+    # 2. Fallback: Local filesystem
+    if mem.live_strip_video_path:
+        file_path = get_memory_file_path(memory_id, mem.live_strip_video_path)
+        if file_path and file_path.is_file():
+            media_type = "video/mp4" if file_path.suffix.lower() == ".mp4" else "video/webm"
+            return FileResponse(file_path, media_type=media_type, filename="vintage-live-strip.mp4")
+
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Live strip video data not found on server.",
+    )
 
 
 @router.delete(
@@ -590,10 +705,13 @@ def delete_memory(
             detail="Memory not found.",
         )
 
-    # 1. Delete all filesystem assets
-    delete_memory_assets(memory_id)
+    # 1. Clean up legacy filesystem assets if any exist
+    try:
+        delete_memory_assets(memory_id)
+    except Exception:
+        pass
 
-    # 2. Delete database record (cascade deletes frames)
+    # 2. Delete database record (cascading deletes PhotoFrames and all BYTEA data in Neon)
     db.delete(mem)
     db.commit()
 

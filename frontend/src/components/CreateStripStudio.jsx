@@ -10,7 +10,6 @@ import {
   SOLID_COLOR_PALETTE
 } from '../utils/stripComposer';
 import { autoCropImageFile } from '../utils/cropUtils';
-import { soundEngine } from '../utils/audio';
 import PhotoCropModal from './PhotoCropModal';
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -53,7 +52,6 @@ export default function CreateStripStudio({
 
   // Synchronize slots array length when photoCount changes
   const handlePhotoCountChange = (newCount) => {
-    soundEngine.playLeverClick?.();
     const count = Math.min(4, Math.max(2, newCount));
     setPhotoCount(count);
     setSlots((prev) => {
@@ -82,8 +80,6 @@ export default function CreateStripStudio({
       return;
     }
 
-    soundEngine.playLeverClick?.();
-
     try {
       if (targetSlotIndex !== null) {
         // Replace single specific slot
@@ -97,7 +93,6 @@ export default function CreateStripStudio({
           };
           return next;
         });
-        soundEngine.playShutter?.();
       } else {
         // Fill next available empty slots or replace from the beginning
         setSlots((prev) => {
@@ -149,7 +144,6 @@ export default function CreateStripStudio({
             return next;
           });
         }
-        soundEngine.playShutter?.();
       }
     } catch (err) {
       console.error('Failed to process image file:', err);
@@ -185,7 +179,6 @@ export default function CreateStripStudio({
   // Reorder: Move Slot Up
   const handleMoveUp = (index) => {
     if (index <= 0) return;
-    soundEngine.playLeverClick?.();
     setSlots((prev) => {
       const next = [...prev];
       const temp = next[index];
@@ -198,7 +191,6 @@ export default function CreateStripStudio({
   // Reorder: Move Slot Down
   const handleMoveDown = (index) => {
     if (index >= photoCount - 1) return;
-    soundEngine.playLeverClick?.();
     setSlots((prev) => {
       const next = [...prev];
       const temp = next[index];
@@ -210,7 +202,6 @@ export default function CreateStripStudio({
 
   // Remove Slot Photo
   const handleRemoveSlot = (index) => {
-    soundEngine.playLeverClick?.();
     setSlots((prev) => {
       const next = [...prev];
       next[index] = null;
@@ -354,7 +345,6 @@ export default function CreateStripStudio({
   const handleDownloadStrip = () => {
     if (!isAllFilled || !composedCanvasRef.current) return;
 
-    soundEngine.playTrayDrop?.();
     setDownloadNotice('Downloading your custom photo strip...');
 
     try {
@@ -620,7 +610,6 @@ export default function CreateStripStudio({
                       type="button"
                       className={`width-btn ${selectedWidthId === preset.id ? 'active' : ''}`}
                       onClick={() => {
-                        soundEngine.playLeverClick?.();
                         setSelectedWidthId(preset.id);
                       }}
                     >
@@ -643,7 +632,6 @@ export default function CreateStripStudio({
                       type="button"
                       className={`design-pill-btn ${selectedDesignId === design.id ? 'active' : ''}`}
                       onClick={() => {
-                        soundEngine.playLeverClick?.();
                         setSelectedDesignId(design.id);
                       }}
                       title={design.description}
@@ -674,7 +662,6 @@ export default function CreateStripStudio({
                         type="button"
                         className={`solid-color-swatch-btn ${selectedSolidColorId === color.id ? 'active' : ''}`}
                         onClick={() => {
-                          soundEngine.playLeverClick?.();
                           setSelectedSolidColorId(color.id);
                         }}
                         title={color.name}

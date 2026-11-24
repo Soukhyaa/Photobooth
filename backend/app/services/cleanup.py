@@ -12,6 +12,9 @@ from app.services.storage import delete_memory_assets
 
 logger = logging.getLogger("vintage_booth.cleanup")
 
+_last_cleanup_time: float = 0.0
+_cleanup_lock = threading.Lock()
+
 
 def utcnow():
     return datetime.now(timezone.utc)
@@ -23,7 +26,8 @@ def cleanup_expired_memories(
 ) -> int:
     """
     Find all memories whose expires_at timestamp has passed, delete their media
-    files from the filesystem, and remove the database records.
+    files from the filesystem if present, and remove the database records
+    (which permanently deletes all binary media stored in Neon PostgreSQL).
     Returns the count of purged memories.
     """
     now = utcnow()
@@ -39,9 +43,9 @@ def cleanup_expired_memories(
     deleted_count = 0
     for mem in expired:
         try:
-            # 1. Remove media directory from filesystem
+            # 1. Remove legacy media directory from filesystem if exists
             delete_memory_assets(mem.id, custom_storage_dir=custom_storage_dir)
-            # 2. Delete database record (cascading deletes PhotoFrames)
+            # 2. Delete database record (cascading deletes PhotoFrames and all BYTEA data in Neon)
             db.delete(mem)
             deleted_count += 1
         except Exception as exc:
@@ -49,12 +53,35 @@ def cleanup_expired_memories(
 
     try:
         db.commit()
-        logger.info("Expired memory cleanup completed: purged %d memories.", deleted_count)
+        logger.info("Expired memory cleanup completed: purged %d memories from database.", deleted_count)
     except Exception as exc:
         db.rollback()
         logger.error("Failed to commit database changes during memory cleanup: %s", exc)
 
     return deleted_count
+
+
+def run_expiration_cleanup_if_needed(
+    db: Session,
+    min_interval_seconds: int = 1800,
+    custom_storage_dir: Optional[Path] = None,
+) -> int:
+    """
+    Request-time cleanup trigger. If at least `min_interval_seconds` have passed
+    since the last run, executes cleanup immediately. Guarantees expired binary
+    data is purged even if the platform sleeps background threads (e.g. Render Free).
+    """
+    global _last_cleanup_time
+    now_ts = datetime.now(timezone.utc).timestamp()
+    if now_ts - _last_cleanup_time < min_interval_seconds:
+        return 0
+
+    with _cleanup_lock:
+        if now_ts - _last_cleanup_time < min_interval_seconds:
+            return 0
+        deleted = cleanup_expired_memories(db, custom_storage_dir=custom_storage_dir)
+        _last_cleanup_time = datetime.now(timezone.utc).timestamp()
+        return deleted
 
 
 class MemoryCleanupWorker:

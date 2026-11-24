@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { POSE_CATEGORIES, POSE_LIBRARY } from '../data/poseLibrary';
-import { soundEngine } from '../utils/audio';
 
 export default function PoseInspirationModal({
   isOpen,
@@ -32,7 +31,6 @@ export default function PoseInspirationModal({
 
   // Tab switch handler
   const handleTabChange = (category) => {
-    soundEngine.playLeverClick?.();
     setActiveTab(category);
     setInspectedPose(null);
   };

@@ -6,7 +6,6 @@ import {
   DEFAULT_EXPORT_WIDTH,
   DEFAULT_EXPORT_HEIGHT
 } from '../utils/cropUtils';
-import { soundEngine } from '../utils/audio';
 
 export default function PhotoCropModal({
   isOpen,
@@ -203,12 +202,10 @@ export default function PhotoCropModal({
   };
 
   const handleZoomStep = (delta) => {
-    soundEngine.playLeverClick?.();
     setZoom((prev) => Math.max(1, Math.min(3, Number((prev + delta).toFixed(2)))));
   };
 
   const handleResetCenter = () => {
-    soundEngine.playLeverClick?.();
     setZoom(1);
     setPanX(0);
     setPanY(0);
@@ -224,7 +221,6 @@ export default function PhotoCropModal({
   // Apply Crop Action
   const handleApplyCrop = useCallback(() => {
     if (!imageElement) return;
-    soundEngine.playShutter?.();
 
     const cropSettings = { zoom, panX, panY };
     const croppedDataUrl = renderCroppedDataUrl(

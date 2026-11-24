@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Integer, Float, DateTime, ForeignKey
+from sqlalchemy import Column, String, Integer, Float, DateTime, ForeignKey, LargeBinary
 from sqlalchemy.orm import relationship
 
 from app.database import Base
@@ -26,7 +26,15 @@ class MemorySession(Base):
     filter_id = Column(String(32), nullable=True)
     capture_mode = Column(String(16), nullable=False, default="still")
 
-    # Stored media file paths (relative to storage directory)
+    # Binary media storage (Neon PostgreSQL BYTEA / SQLite BLOB)
+    strip_image_data = Column(LargeBinary, nullable=True)
+    strip_image_mime = Column(String(64), nullable=True, default="image/png")
+    strip_thumbnail_data = Column(LargeBinary, nullable=True)
+    strip_thumbnail_mime = Column(String(64), nullable=True, default="image/webp")
+    live_strip_video_data = Column(LargeBinary, nullable=True)
+    live_strip_video_mime = Column(String(64), nullable=True, default="video/webm")
+
+    # Stored media file paths (retained for backward compatibility / fallback)
     strip_image_path = Column(String(512), nullable=True)
     strip_thumbnail_path = Column(String(512), nullable=True)
     live_strip_video_path = Column(String(512), nullable=True)
@@ -51,6 +59,14 @@ class PhotoFrame(Base):
         nullable=False,
     )
     photo_index = Column(Integer, nullable=False)  # 1 to 4
+
+    # Binary media storage (Neon PostgreSQL BYTEA / SQLite BLOB)
+    photo_image_data = Column(LargeBinary, nullable=True)
+    photo_image_mime = Column(String(64), nullable=True, default="image/jpeg")
+    live_video_data = Column(LargeBinary, nullable=True)
+    live_video_mime = Column(String(64), nullable=True, default="video/webm")
+
+    # Stored media file paths (retained for backward compatibility / fallback)
     photo_image_path = Column(String(512), nullable=True)
     live_video_path = Column(String(512), nullable=True)
     duration = Column(Float, nullable=True)
