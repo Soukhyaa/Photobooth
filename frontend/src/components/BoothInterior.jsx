@@ -979,74 +979,6 @@ export default function BoothInterior({
                     </div>
                   )}
 
-                  {/* Mode Selection Modal: Appears only AFTER clicking Ready */}
-                  {captureState === 'selecting_mode' && (
-                    <div className="mode-selection-modal-backdrop">
-                      <div className="mode-selection-modal-card">
-                        <div className="mode-modal-header">
-                          <span className="mode-modal-step-tag">STEP 2 OF 2</span>
-                          <h3 className="mode-modal-title">CHOOSE CAPTURE MODE</h3>
-                          <p className="mode-modal-sub">
-                            <strong>{activeFilter.name}</strong>
-                          </p>
-                        </div>
-
-                        <div className="mode-options-grid">
-                          {/* Option 1: Still Photos */}
-                          <button
-                            type="button"
-                            className="mode-choice-card"
-                            onClick={() => handleSelectModeAndStart('still')}
-                            autoFocus
-                          >
-                            <div className="mode-choice-icon-bubble">
-                              <span className="mode-choice-icon">📷</span>
-                            </div>
-                            <div className="mode-choice-info">
-                              <div className="mode-choice-heading-row">
-                                <span className="mode-choice-title">STILL PHOTOS</span>
-                                <span className="mode-choice-badge classic">RETRO PRINT</span>
-                              </div>
-                              <p className="mode-choice-desc">
-                                Classic four-photo vintage strip.
-                              </p>
-                              <span className="mode-choice-action">START STILL STRIP ▶</span>
-                            </div>
-                          </button>
-
-                          {/* Option 2: Live Photos */}
-                          <button
-                            type="button"
-                            className="mode-choice-card featured"
-                            onClick={() => handleSelectModeAndStart('live')}
-                          >
-                            <div className="mode-choice-icon-bubble live">
-                              <span className="mode-choice-icon">✦ 📹</span>
-                            </div>
-                            <div className="mode-choice-info">
-                              <div className="mode-choice-heading-row">
-                                <span className="mode-choice-title">LIVE PHOTOS</span>
-                                <span className="mode-choice-badge live">APPLE STYLE</span>
-                              </div>
-                              <p className="mode-choice-desc">
-                                Captures 4 still photos PLUS 4 short moving moments.
-                              </p>
-                              <span className="mode-choice-action live">START LIVE STRIP ▶</span>
-                            </div>
-                          </button>
-                        </div>
-
-                        <button
-                          type="button"
-                          className="mode-modal-cancel-btn"
-                          onClick={() => setCaptureState('idle')}
-                        >
-                          <span>✕ BACK TO FILTERS</span>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
                   {/* Interactive Sequential Capture Overlay (Top-Right Countdown, Flash) */}
                   {isSequenceActive && (
                     <CaptureOverlay
@@ -1132,6 +1064,74 @@ export default function BoothInterior({
           </div>
         )}
       </main>
+
+      {/* Mode Selection Modal: Appears only AFTER clicking Ready */}
+      {captureState === 'selecting_mode' && (
+        <div className="mode-selection-modal-backdrop" role="dialog" aria-modal="true" aria-label="Choose Capture Mode">
+          <div className="mode-selection-modal-card">
+            <div className="mode-modal-header">
+              <span className="mode-modal-step-tag">STEP 2 OF 2</span>
+              <h3 className="mode-modal-title">CHOOSE CAPTURE MODE</h3>
+              <p className="mode-modal-sub">
+                <strong>{activeFilter.name}</strong>
+              </p>
+            </div>
+
+            <div className="mode-options-grid" role="group" aria-label="Capture Mode Options">
+              {/* Option 1: Still Photos */}
+              <button
+                type="button"
+                className="mode-choice-card"
+                onClick={() => handleSelectModeAndStart('still')}
+                autoFocus
+              >
+                <div className="mode-choice-icon-bubble">
+                  <span className="mode-choice-icon">📷</span>
+                </div>
+                <div className="mode-choice-info">
+                  <div className="mode-choice-heading-row">
+                    <span className="mode-choice-title">STILL PHOTOS</span>
+                    <span className="mode-choice-badge classic">RETRO PRINT</span>
+                  </div>
+                  <p className="mode-choice-desc">
+                    Classic four-photo vintage strip.
+                  </p>
+                  <span className="mode-choice-action">START STILL STRIP ▶</span>
+                </div>
+              </button>
+
+              {/* Option 2: Live Photos */}
+              <button
+                type="button"
+                className="mode-choice-card featured"
+                onClick={() => handleSelectModeAndStart('live')}
+              >
+                <div className="mode-choice-icon-bubble live">
+                  <span className="mode-choice-icon">✦ 📹</span>
+                </div>
+                <div className="mode-choice-info">
+                  <div className="mode-choice-heading-row">
+                    <span className="mode-choice-title">LIVE PHOTOS</span>
+                    <span className="mode-choice-badge live">APPLE STYLE</span>
+                  </div>
+                  <p className="mode-choice-desc">
+                    Captures 4 still photos PLUS 4 short moving moments.
+                  </p>
+                  <span className="mode-choice-action live">START LIVE STRIP ▶</span>
+                </div>
+              </button>
+            </div>
+
+            <button
+              type="button"
+              className="mode-modal-cancel-btn"
+              onClick={() => setCaptureState('idle')}
+            >
+              <span>✕ BACK TO FILTERS</span>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

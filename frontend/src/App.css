@@ -1833,6 +1833,93 @@
   }
 }
 
+@media (max-width: 680px) {
+  .retro-header {
+    padding: 0 0.65rem;
+    height: 56px;
+    gap: 0.35rem;
+  }
+
+  .brand-star {
+    font-size: 1rem;
+  }
+
+  .brand-title {
+    font-size: 1.15rem;
+    letter-spacing: 1px;
+  }
+
+  .header-actions {
+    gap: 0.35rem;
+  }
+
+  .header-studio-btn,
+  .header-poses-btn,
+  .header-memories-btn,
+  .sound-toggle-btn {
+    padding: 6px 9px;
+    gap: 0.25rem;
+    font-size: 0.72rem;
+  }
+
+  /* Compact icon buttons on phones to prevent header blowout */
+  .studio-label,
+  .poses-label,
+  .memories-label,
+  .sound-label {
+    display: none;
+  }
+
+  /* Booth interior & Dispenser station mobile adaptations */
+  .booth-interior-stage {
+    padding: 0.75rem 0.5rem 1.5rem;
+  }
+
+  .interior-top-bar {
+    margin-bottom: 0.75rem;
+    gap: 0.5rem;
+  }
+
+  .exit-booth-btn {
+    font-size: 0.92rem;
+    padding: 6px 12px;
+  }
+
+  .status-label {
+    font-size: 0.68rem;
+  }
+
+  .vanity-mirror-unit {
+    border-width: 4px;
+    padding: 8px 10px;
+    border-radius: 14px;
+  }
+
+  .dispenser-cabinet-chassis {
+    padding: 1rem 0.65rem 1.25rem;
+    border-width: 3px;
+    border-radius: 12px;
+  }
+
+  .dispenser-customizer-console {
+    padding: 10px 8px;
+    border-radius: 10px;
+  }
+
+  .customizer-title {
+    font-size: 1.15rem;
+    letter-spacing: 1.5px;
+  }
+
+  .dispenser-headline {
+    font-size: 1.15rem;
+  }
+
+  .dispenser-marquee-title {
+    font-size: 1.3rem;
+  }
+}
+
 @media (max-width: 480px) {
   .marquee-text {
     font-size: 1.6rem;
@@ -1845,6 +1932,107 @@
 
   .mirror-guide-title {
     font-size: 1.35rem;
+  }
+
+  .width-options-grid {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .width-option-card {
+    padding: 8px 10px;
+  }
+
+  .get-my-strip-btn {
+    padding: 8px 14px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .get-strip-main {
+    font-size: 1.35rem;
+  }
+
+  .get-strip-sub {
+    font-size: 0.58rem;
+    word-break: break-word;
+  }
+
+  .interior-ready-btn {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .ready-main-label {
+    font-size: 1.2rem;
+    letter-spacing: 2px;
+  }
+
+  .capture-top-hud {
+    padding: 3px 6px;
+    gap: 4px;
+    max-width: 100%;
+  }
+
+  .capture-step-badge {
+    font-size: 0.88rem;
+    letter-spacing: 0.8px;
+    gap: 0.3rem;
+  }
+
+  .capture-slots-indicator {
+    gap: 0.25rem;
+  }
+
+  .slot-dot {
+    width: 17px;
+    height: 17px;
+    font-size: 0.58rem;
+  }
+
+  .capture-top-right-group {
+    gap: 0.35rem;
+  }
+
+  .subtle-corner-countdown {
+    padding: 2px 5px;
+    gap: 0.2rem;
+  }
+
+  .subtle-countdown-num {
+    font-size: 0.82rem;
+  }
+
+  .capture-cancel-btn {
+    padding: 3px 6px;
+    font-size: 0.62rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .retro-header {
+    padding: 0 0.4rem;
+    gap: 0.25rem;
+  }
+
+  .brand-title {
+    font-size: 1rem;
+    letter-spacing: 0.5px;
+  }
+
+  .header-brand {
+    gap: 0.35rem;
+  }
+
+  .header-actions {
+    gap: 0.25rem;
+  }
+
+  .header-studio-btn,
+  .header-poses-btn,
+  .header-memories-btn,
+  .sound-toggle-btn {
+    padding: 5px 7px;
   }
 }
 
@@ -2711,7 +2899,25 @@
 
   .strip-actions-panel {
     width: 100%;
-    max-width: 320px;
+    max-width: 380px;
+  }
+}
+
+@media (max-width: 480px) {
+  .strip-preview-workspace {
+    gap: 1.15rem;
+  }
+
+  .physical-strip-wrapper {
+    width: 200px;
+  }
+
+  .strip-actions-panel {
+    max-width: 100%;
+  }
+
+  .strip-options-card {
+    padding: 10px 12px;
   }
 }
 
@@ -2719,15 +2925,17 @@
    MODE SELECTION MODAL (STEP 2: STILL VS LIVE PHOTOS)
    ========================================================================== */
 .mode-selection-modal-backdrop {
-  position: absolute;
+  position: fixed;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(14, 2, 5, 0.78);
-  backdrop-filter: blur(6px);
-  z-index: 50;
-  padding: 1.25rem;
+  background: rgba(14, 2, 5, 0.82);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+  padding: 1.25rem 1rem;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -2946,13 +3154,87 @@
   color: #fca5a5;
 }
 
-@media (max-width: 580px) {
+@media (max-width: 640px) {
+  .mode-selection-modal-backdrop {
+    padding: 1rem 0.75rem;
+    align-items: center;
+  }
+
+  .mode-selection-modal-card {
+    max-width: 400px;
+    width: 100%;
+    padding: 1.15rem 0.85rem;
+    gap: 0.85rem;
+    max-height: 90vh;
+    overflow-y: auto;
+    border-radius: 12px;
+  }
+
+  .mode-modal-title {
+    font-size: 1.45rem;
+    letter-spacing: 1.5px;
+  }
+
   .mode-options-grid {
     grid-template-columns: 1fr;
+    gap: 0.75rem;
+    width: 100%;
+  }
+
+  .mode-choice-card {
+    padding: 0.85rem 0.75rem;
+    flex-direction: row;
+    align-items: center;
+    text-align: left;
+    gap: 0.75rem;
+    min-width: 0;
+  }
+
+  .mode-choice-icon-bubble {
+    width: 46px;
+    height: 46px;
+    min-width: 46px;
+    margin-bottom: 0;
+    font-size: 1.35rem;
+  }
+
+  .mode-choice-info {
+    align-items: flex-start;
+    text-align: left;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .mode-choice-heading-row {
+    justify-content: flex-start;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .mode-choice-title {
+    font-size: 1.15rem;
+    letter-spacing: 1.2px;
   }
 
   .mode-choice-desc {
+    margin: 2px 0 6px;
+    font-size: 0.72rem;
+    line-height: 1.25;
     min-height: auto;
+  }
+
+  .mode-choice-action {
+    font-size: 0.82rem;
+    padding: 4px 10px;
+    width: auto;
+    align-self: flex-start;
+    letter-spacing: 1px;
+  }
+
+  .mode-modal-cancel-btn {
+    padding: 5px 14px;
+    font-size: 0.85rem;
   }
 }
 
@@ -3670,6 +3952,14 @@
 @media (max-width: 640px) {
   .design-options-grid {
     grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+}
+
+@media (max-width: 380px) {
+  .design-options-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
   }
 }
 
@@ -3709,6 +3999,14 @@
 @media (max-width: 580px) {
   .solid-palette-swatches {
     grid-template-columns: repeat(4, 1fr);
+    gap: 5px;
+  }
+}
+
+@media (max-width: 380px) {
+  .solid-palette-swatches {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 3px;
   }
 }
 
@@ -3723,6 +4021,8 @@
   padding: 6px 4px;
   cursor: pointer;
   transition: all 0.2s ease;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .solid-color-btn:hover {
@@ -3758,9 +4058,12 @@
   font-size: 0.58rem;
   font-weight: 700;
   color: #f1f5f9;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
   text-align: center;
-  white-space: nowrap;
+  white-space: normal;
+  line-height: 1.15;
+  word-break: break-word;
+  max-width: 100%;
 }
 
 .design-option-card {
@@ -3775,6 +4078,14 @@
   cursor: pointer;
   transition: all 0.2s ease;
   position: relative;
+  min-width: 0;
+  overflow: hidden;
+}
+
+@media (max-width: 480px) {
+  .design-option-card {
+    padding: 6px 3px;
+  }
 }
 
 .design-option-card:hover {
@@ -3804,6 +4115,13 @@
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
 }
 
+@media (max-width: 480px) {
+  .design-swatch-thumb {
+    width: 38px;
+    height: 24px;
+  }
+}
+
 .swatch-mat-box {
   width: 30px;
   height: 18px;
@@ -3821,16 +4139,31 @@
 .design-card-name {
   font-family: var(--font-marquee-bebas);
   font-size: 0.88rem;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
   color: #ffffff;
   line-height: 1.1;
+  max-width: 100%;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  text-align: center;
+}
+
+@media (max-width: 480px) {
+  .design-card-name {
+    font-size: 0.8rem;
+  }
 }
 
 .design-card-tag {
-  font-size: 0.58rem;
+  font-size: 0.56rem;
   color: #94a3b8;
   margin-top: 2px;
-  white-space: nowrap;
+  white-space: normal;
+  line-height: 1.15;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  text-align: center;
+  max-width: 100%;
 }
 
 /* Live Customization Preview Row */
@@ -4075,6 +4408,13 @@
   gap: 6px;
 }
 
+@media (max-width: 480px) {
+  .preview-designs-picker {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 5px;
+  }
+}
+
 .preview-design-pill {
   display: flex;
   align-items: center;
@@ -4088,6 +4428,16 @@
   color: #ffffff;
   cursor: pointer;
   transition: all 0.2s ease;
+  min-width: 0;
+  overflow: hidden;
+}
+
+@media (max-width: 480px) {
+  .preview-design-pill {
+    padding: 5px 6px;
+    font-size: 0.62rem;
+    gap: 4px;
+  }
 }
 
 .preview-design-pill:hover {
@@ -4136,6 +4486,13 @@
   gap: 4px;
 }
 
+@media (max-width: 580px) {
+  .preview-solid-swatches {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+  }
+}
+
 .preview-color-btn {
   display: flex;
   flex-direction: column;
@@ -4147,6 +4504,8 @@
   padding: 4px 2px;
   cursor: pointer;
   transition: all 0.15s ease;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .preview-color-btn:hover {
@@ -4155,7 +4514,7 @@
 }
 
 .preview-color-btn.active {
-  background: rgba(250, 184, 57, 0.2);
+  background: rgba(250, 184, 57, 0.25);
   border-color: var(--color-mustard-bright);
   box-shadow: 0 0 8px rgba(250, 184, 57, 0.35);
 }
@@ -4179,8 +4538,12 @@
   font-size: 0.52rem;
   font-weight: 600;
   color: #e2e8f0;
-  letter-spacing: 0.3px;
-  white-space: nowrap;
+  letter-spacing: 0.2px;
+  white-space: normal;
+  line-height: 1.15;
+  word-break: break-word;
+  text-align: center;
+  max-width: 100%;
 }
 
 /* Strip Card Width Variants */
@@ -5644,6 +6007,13 @@
   gap: 0.45rem;
 }
 
+@media (max-width: 480px) {
+  .designs-pill-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.35rem;
+  }
+}
+
 .design-pill-btn {
   display: flex;
   align-items: center;
@@ -5655,6 +6025,15 @@
   cursor: pointer;
   transition: all 0.15s ease;
   text-align: left;
+  min-width: 0;
+  overflow: hidden;
+}
+
+@media (max-width: 480px) {
+  .design-pill-btn {
+    padding: 6px 8px;
+    gap: 0.35rem;
+  }
 }
 
 .design-pill-btn:hover {
@@ -6196,6 +6575,60 @@
 
   .studio-title {
     font-size: 1.8rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .create-strip-studio-stage {
+    padding: 0.75rem 0.5rem 2rem;
+  }
+
+  .studio-container {
+    gap: 1rem;
+  }
+
+  .studio-marquee {
+    padding: 0.85rem 0.65rem;
+    border-radius: 10px;
+  }
+
+  .studio-marquee-top {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+  }
+
+  .studio-title {
+    font-size: 1.55rem;
+    letter-spacing: 1.5px;
+  }
+
+  .studio-card {
+    padding: 1rem 0.75rem;
+    border-radius: 10px;
+  }
+
+  .studio-card-header {
+    margin-bottom: 0.85rem;
+  }
+
+  .photo-slot-item {
+    padding: 0.55rem 0.65rem;
+    gap: 0.5rem;
+  }
+
+  .slot-content-filled {
+    gap: 0.6rem;
+  }
+
+  .studio-action-buttons {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .studio-primary-download-btn,
+  .studio-secondary-action-btn {
+    width: 100%;
   }
 }
 
@@ -7257,9 +7690,21 @@
 }
 
 @media (max-width: 640px) {
+  .pose-modal-backdrop {
+    padding: 0.5rem;
+  }
+
   .pose-modal-window {
     height: 98vh;
     border-radius: 8px;
+  }
+
+  .pose-modal-header {
+    padding: 0.75rem 0.85rem;
+  }
+
+  .pose-modal-title {
+    font-size: 1.35rem;
   }
 
   .pose-nav-toolbar {
@@ -7277,5 +7722,9 @@
 
   .challenge-card-top {
     flex-direction: column;
+  }
+
+  .pose-modal-footer {
+    padding: 0.5rem 0.85rem;
   }
 }
