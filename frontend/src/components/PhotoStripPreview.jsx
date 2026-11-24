@@ -355,7 +355,7 @@ export default function PhotoStripPreview({
           <span>PHOTO STRIP COMPLETE</span>
           <span className="badge-star">✦</span>
         </div>
-        <h2 className="strip-preview-title">Your 4-Pose Photo Strip</h2>
+        <h2 className="strip-preview-title">YOUR PHOTO STRIP</h2>
         <p className="strip-preview-sub">
           Filter: <strong>{selectedFilter?.name || 'Selected Filter'}</strong> • Design: <strong>{activeDesignPreset.name}</strong> • Format: <strong>{activeWidthPreset.name}</strong> ({activeWidthPreset.sub})
           {captureMode === 'live' && (
@@ -576,25 +576,6 @@ export default function PhotoStripPreview({
               />
               <span className="caption-char-count">{caption.length}/32 chars</span>
             </div>
-
-            <div className="strip-specs-info">
-              <div className="spec-item">
-                <span className="spec-label">DIMENSIONS:</span>
-                <span className="spec-value">{activeWidthPreset.sub}</span>
-              </div>
-              <div className="spec-item">
-                <span className="spec-label">DESIGN PRESET:</span>
-                <span className="spec-value">
-                  {selectedDesignId === 'solid_colors'
-                    ? `Solid ${SOLID_COLOR_PALETTE.find((c) => c.id === selectedSolidColorId)?.name}`
-                    : activeDesignPreset.name}
-                </span>
-              </div>
-              <div className="spec-item">
-                <span className="spec-label">FILTER EMULSION:</span>
-                <span className="spec-value">{selectedFilter?.name || 'Retro Film'}</span>
-              </div>
-            </div>
           </div>
 
           {/* Download Notification Banner */}
@@ -606,115 +587,53 @@ export default function PhotoStripPreview({
 
           {/* Download & Save Controls */}
           <div className="strip-action-buttons">
-            {/* Retro Save to My Memories Action (Opt-in) */}
-            <div className="save-memories-card">
-              <button
-                type="button"
-                className={`strip-btn save-memories-btn ${isSavedToMemories ? 'is-saved' : ''} ${isSavingToMemories ? 'is-saving' : ''}`}
-                onClick={handleSaveToMemories}
-                disabled={isComposingBase || isSavingToMemories || isSavedToMemories}
-                aria-label="Save this photo strip to My Memories"
-              >
-                <div className="save-btn-inner">
-                  <span className="save-btn-icon">{isSavedToMemories ? '✓' : isSavingToMemories ? '⚙️' : '💾'}</span>
-                  <div className="btn-labels">
-                    <span className="main-text">
-                      {isSavedToMemories
-                        ? 'SAVED TO MY MEMORIES'
-                        : isSavingToMemories
-                          ? 'SAVING TO MEMORIES...'
-                          : 'SAVE TO MY MEMORIES'}
-                    </span>
-                    <span className="sub-text">
-                      {isSavedToMemories
-                        ? 'STORED IN YOUR PRIVATE BROWSER ALBUM'
-                        : isSavingToMemories
-                          ? 'UPLOADING TO PRIVATE LOCAL STORAGE...'
-                          : 'KEEP IN YOUR BROWSER ALBUM (7-DAY RETENTION)'}
-                    </span>
-                  </div>
-                </div>
-              </button>
-              {saveStatusMessage && (
-                <div className={`save-status-pill ${isSavedToMemories ? 'is-success' : 'is-error'}`}>
-                  <span>{saveStatusMessage}</span>
-                </div>
-              )}
-            </div>
-
-            {/* Primary Download Bay: 3 Choices for Live Photos mode, Single PNG for Still mode */}
-            {captureMode === 'live' ? (
-              <div className="live-strip-download-group">
-                <div className="live-strip-download-header">
-                  <span className="live-badge-glow">✦ LIVE PHOTOS MODE ✦</span>
-                  <h3 className="live-download-heading">CHOOSE STRIP DOWNLOAD FORMAT:</h3>
-                </div>
-
-                <div className="live-strip-options-grid">
-                  {/* Choice A: Get Live Photo Strip (Video) */}
-                  <button
-                    type="button"
-                    className="strip-btn live-format-btn live-video-btn"
-                    onClick={handleDownloadLiveStrip}
-                    disabled={isComposingBase || isGeneratingVideoStrip}
-                    aria-label="Download animated Live Photo Strip video"
-                  >
-                    <span className="btn-icon">🎞️</span>
-                    <div className="btn-labels">
-                      <span className="main-text">GET LIVE PHOTO STRIP</span>
-                      <span className="sub-text">
-                        {isGeneratingVideoStrip
-                          ? videoProgressText || 'DEVELOPING VIDEO STRIP...'
-                          : `ANIMATED VIDEO (${activeWidthPreset.sub.toUpperCase()})`}
-                      </span>
-                    </div>
-                  </button>
-
-                  {/* Choice B: Get Still Photo Strip (PNG) */}
-                  <button
-                    type="button"
-                    className="strip-btn live-format-btn still-png-btn"
-                    onClick={handleDownloadStrip}
-                    disabled={isComposingBase || isGeneratingVideoStrip}
-                    aria-label="Download classic static photo strip PNG"
-                  >
-                    <span className="btn-icon">🖼️</span>
-                    <div className="btn-labels">
-                      <span className="main-text">GET STILL PHOTO STRIP</span>
-                      <span className="sub-text">STATIC HIGH-RES PRINT (PNG)</span>
-                    </div>
-                  </button>
-
-                  {/* Choice C: Get Both (Video + PNG) */}
-                  <button
-                    type="button"
-                    className="strip-btn live-format-btn get-both-btn"
-                    onClick={handleDownloadBothStrips}
-                    disabled={isComposingBase || isGeneratingVideoStrip}
-                    aria-label="Download both animated video strip and static PNG"
-                  >
-                    <span className="btn-icon">✨</span>
-                    <div className="btn-labels">
-                      <span className="main-text">GET BOTH (VIDEO + STILL)</span>
-                      <span className="sub-text">ANIMATED STRIP + HIGH-RES PNG</span>
-                    </div>
-                  </button>
-                </div>
+            {/* Save to My Memories Action */}
+            <button
+              type="button"
+              className={`strip-btn save-memories-btn ${isSavedToMemories ? 'is-saved' : ''} ${isSavingToMemories ? 'is-saving' : ''}`}
+              onClick={handleSaveToMemories}
+              disabled={isComposingBase || isSavingToMemories || isSavedToMemories}
+              aria-label="Save to My Memories"
+            >
+              <span className="btn-icon">{isSavedToMemories ? '✓' : isSavingToMemories ? '⚙️' : '💾'}</span>
+              <span className="main-text">
+                {isSavedToMemories
+                  ? 'SAVED TO MY MEMORIES'
+                  : isSavingToMemories
+                    ? 'SAVING TO MEMORIES...'
+                    : 'SAVE TO MY MEMORIES'}
+              </span>
+            </button>
+            {saveStatusMessage && (
+              <div className={`save-status-pill ${isSavedToMemories ? 'is-success' : 'is-error'}`}>
+                <span>{saveStatusMessage}</span>
               </div>
-            ) : (
-              /* Still Photos Mode: Standard Single High-Res PNG Button */
+            )}
+
+            {/* Primary Download Button */}
+            <button
+              type="button"
+              className="strip-btn download-strip-btn"
+              onClick={handleDownloadStrip}
+              disabled={isComposingBase}
+              aria-label="Download Photo Strip"
+            >
+              <span className="btn-icon">📥</span>
+              <span className="main-text">DOWNLOAD PHOTO STRIP</span>
+            </button>
+
+            {captureMode === 'live' && (
               <button
                 type="button"
-                className="strip-btn download-strip-btn"
-                onClick={handleDownloadStrip}
-                disabled={isComposingBase}
-                aria-label="Download complete photo strip PNG"
+                className="strip-btn live-format-btn live-video-btn"
+                onClick={handleDownloadLiveStrip}
+                disabled={isComposingBase || isGeneratingVideoStrip}
+                aria-label="Download Live Video Strip"
               >
-                <span className="btn-icon">📥</span>
-                <div className="btn-labels">
-                  <span className="main-text">DOWNLOAD PHOTO STRIP</span>
-                  <span className="sub-text">HIGH-RES PNG ({activeWidthPreset.sub.toUpperCase()})</span>
-                </div>
+                <span className="btn-icon">🎞️</span>
+                <span className="main-text">
+                  {isGeneratingVideoStrip ? videoProgressText || 'DEVELOPING VIDEO STRIP...' : 'DOWNLOAD LIVE VIDEO STRIP'}
+                </span>
               </button>
             )}
 
@@ -724,7 +643,7 @@ export default function PhotoStripPreview({
                 <div className="live-downloads-header">
                   <div className="live-header-tag">
                     <span className="live-pulse-dot"></span>
-                    <span className="live-header-title">LIVE PHOTO CLIPS (4 VIDEOS)</span>
+                    <span className="live-header-title">LIVE PHOTOS CLIPS</span>
                   </div>
                   <button
                     type="button"
@@ -735,9 +654,6 @@ export default function PhotoStripPreview({
                     Save All 4 Videos
                   </button>
                 </div>
-                <p className="live-downloads-hint">
-                  Download each pose as a playable video file preserving pre- & post-shutter motion:
-                </p>
 
                 <div className="live-buttons-grid">
                   {[1, 2, 3, 4].map((photoNum) => {
@@ -764,7 +680,7 @@ export default function PhotoStripPreview({
             <div className="individual-downloads-card">
               <div className="individual-header">
                 <span className="individual-title">
-                  {captureMode === 'live' ? 'STILL PHOTOGRAPHS (4 POSES):' : 'SAVE INDIVIDUAL POSES:'}
+                  SAVE INDIVIDUAL POSES:
                 </span>
                 <button
                   type="button"
@@ -789,7 +705,7 @@ export default function PhotoStripPreview({
                       title={`Download Still Photo ${photoNum} (PNG)`}
                     >
                       <span className="dl-icon">📷</span>
-                      <span>Still Photo #{photoNum} (PNG)</span>
+                      <span>Still Photo #{photoNum}</span>
                     </button>
                   );
                 })}
@@ -801,10 +717,10 @@ export default function PhotoStripPreview({
               type="button"
               className="strip-btn retake-ghost-btn"
               onClick={onRetake}
-              aria-label="Retake all four photos"
+              aria-label="Try another set"
             >
               <span className="btn-icon">🔄</span>
-              <span>TAKE ANOTHER SET</span>
+              <span>TRY ANOTHER SET</span>
             </button>
           </div>
         </aside>

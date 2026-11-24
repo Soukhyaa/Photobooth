@@ -41,9 +41,9 @@ export default function LandingBooth({ onStepInside, onOpenStudio, onOpenPoses }
           <div className="chrome-bracket bracket-bl" aria-hidden="true" />
           <div className="chrome-bracket bracket-br" aria-hidden="true" />
 
-          {/* LEFT SIDE: Upper-Left Instruction Panel & Lower-Left Collection Slot */}
+          {/* LEFT SIDE: Operating Instructions Plaque */}
           <aside className="booth-left-column">
-            {/* Upper-Left: Instruction Panel */}
+            {/* Instruction Panel */}
             <div className="booth-instruction-panel">
               <div className="vintage-plaque">
                 <div className="plaque-header">
@@ -71,74 +71,6 @@ export default function LandingBooth({ onStepInside, onOpenStudio, onOpenPoses }
                 </ol>
               </div>
             </div>
-
-            {/* Lower-Left: Photo Strip Collection Slot */}
-            <div className="booth-collection-slot-module">
-              <div className="collection-slot-header">
-                <span className="slot-glow-lamp" aria-hidden="true" />
-                <span className="collection-slot-label">COLLECT YOUR STRIPS</span>
-                <span className="slot-glow-lamp" aria-hidden="true" />
-              </div>
-
-              <div className="dispense-slot-housing">
-                <div className="chrome-slot-rim">
-                  <span className="slot-emboss">PHOTOS</span>
-                  <div className="slot-opening">
-                    <div className="slot-shadow" />
-                    {/* Realistic peek of a photo strip edge resting in tray */}
-                    <div className="slot-sample-strip-peek" aria-hidden="true">
-                      <div className="peek-strip-paper">
-                        <span className="peek-strip-dot" />
-                        <span className="peek-strip-dot" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="collection-tray-lip">
-                  <span className="tray-label">COLLECT HERE</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Create A Strip Portal: Import photos directly from device */}
-            {onOpenStudio && (
-              <div className="booth-studio-portal-wrap">
-                <button
-                  type="button"
-                  className="booth-studio-portal-btn"
-                  onClick={onOpenStudio}
-                  title="Create a custom strip from device photos"
-                  aria-label="Create a strip by importing photos"
-                >
-                  <span className="portal-film-icon">🎞️</span>
-                  <div className="portal-text-block">
-                    <span className="portal-title">CREATE A STRIP</span>
-                    <span className="portal-subtitle">IMPORT PHOTOS • 2 TO 4 SHOTS</span>
-                  </div>
-                  <span className="portal-arrow">▶</span>
-                </button>
-              </div>
-            )}
-
-            {/* Pose Inspiration Portal: Browse curated poses & challenges */}
-            {onOpenPoses && (
-              <div className="booth-poses-portal-wrap">
-                <button
-                  type="button"
-                  className="booth-poses-portal-btn"
-                  onClick={onOpenPoses}
-                  title="Browse Pose Inspiration & 4-Shot Challenges"
-                  aria-label="Browse Pose Inspiration Lookbook"
-                >
-                  <span className="portal-bulb-icon">💡</span>
-                  <div className="portal-text-block">
-                    <span className="portal-title">POSE LOOKBOOK</span>
-                    <span className="portal-subtitle">SOLO, COUPLES & GROUPS • 4-SHOT IDEAS</span>
-                  </div>
-                  <span className="portal-arrow">▶</span>
-                </button>
-              </div>
-            )}
           </aside>
 
           {/* RIGHT SIDE: Walk-In Doorway with Hanging Velvet Curtain */}

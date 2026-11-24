@@ -31,7 +31,7 @@ import groupCharliesAngels from '../assets/poses/groups/group_charlies_angels.jp
 export const POSE_CATEGORIES = [
   { id: 'solo', name: 'SOLO', label: 'Solo Portraits', icon: '👤', description: 'Single-person classics, film-star glamour, and playful retro poses' },
   { id: 'couples', name: 'COUPLES', label: 'Couples & Duos', icon: '👥', description: 'Romantic moments, stylish back-to-back poses, and playful duos' },
-  { id: 'groups', name: 'GROUPS', label: 'Friends & Groups', icon: '🎉', description: 'High-energy squad frames, creative pyramids, and laugh-out-loud chaos' }
+  { id: 'groups', name: 'FRIENDS', label: 'Friends', icon: '🎉', description: 'High-energy squad frames, creative pyramids, and laugh-out-loud chaos' }
 ];
 
 export const POSE_VIBES = [

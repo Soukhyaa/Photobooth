@@ -483,27 +483,6 @@ export default function BoothInterior({
               🔄 Flip
             </button>
           )}
-
-          {!isSequenceActive && captureState !== 'selecting_mode' && captureState === 'idle' && cameraStatus !== 'mock' && (
-            <button
-              type="button"
-              className="test-mode-toggle-btn"
-              onClick={enableMockMode}
-              title="Switch to Test Portrait Feed"
-            >
-              🎭 Test Feed
-            </button>
-          )}
-          {!isSequenceActive && captureState !== 'selecting_mode' && captureState === 'idle' && cameraStatus === 'mock' && (
-            <button
-              type="button"
-              className="test-mode-toggle-btn"
-              onClick={() => startCamera()}
-              title="Connect Webcam"
-            >
-              📷 Live Camera
-            </button>
-          )}
         </div>
       </div>
 
@@ -548,18 +527,7 @@ export default function BoothInterior({
 
               {/* Upper Action Bay */}
               <div className="dispenser-action-bay">
-                <div className="dispenser-status-badge">
-                  <span className="ready-bulb"></span>
-                  <span>4 POSES PROCESSED</span>
-                  <span className="ready-bulb"></span>
-                </div>
-
                 <h3 className="dispenser-headline">Your memories are ready!</h3>
-                <p className="dispenser-subtext">
-                  {captureMode === 'live'
-                    ? '4 still photographs & 4 live clips developed. Ready to print.'
-                    : 'Chemical developer cycle complete. Ready for physical delivery.'}
-                </p>
 
                 {captureState === 'ready_to_dispense' && (
                   <div className="dispenser-customizer-console">
@@ -729,76 +697,18 @@ export default function BoothInterior({
                         ) : null}
                       </div>
 
-                      {/* Pattern Detail Zoom Box for subtle textures */}
-                      <div className="preview-pattern-detail-box">
-                        <div
-                          className="pattern-detail-swatch"
-                          style={{
-                            backgroundColor: selectedDesignId === 'solid_colors'
-                              ? (SOLID_COLOR_PALETTE.find((c) => c.id === selectedSolidColorId)?.hex || '#1c1917')
-                              : (STRIP_DESIGNS.find((d) => d.id === selectedDesignId)?.backgroundColor || '#f6f1e7'),
-                            borderColor: selectedDesignId === 'solid_colors'
-                              ? (SOLID_COLOR_PALETTE.find((c) => c.id === selectedSolidColorId)?.photoBorder || '#ffffff')
-                              : (STRIP_DESIGNS.find((d) => d.id === selectedDesignId)?.photoBorder || '#3a1219')
-                          }}
-                        >
-                          {selectedDesignId === 'polka_dots' && (
-                            <div className="pattern-detail-sample dots-sample" title="Polka Dot Pattern">
-                              <span>•</span><span>•</span><span>•</span>
-                              <span>•</span><span>•</span><span>•</span>
-                            </div>
-                          )}
-                          {selectedDesignId === 'little_hearts' && (
-                            <div className="pattern-detail-sample hearts-sample" title="Little Hearts Pattern">
-                              <span>♥</span><span>♥</span><span>♥</span>
-                              <span>♥</span><span>♥</span><span>♥</span>
-                            </div>
-                          )}
-                          {selectedDesignId === 'starry' && (
-                            <div className="pattern-detail-sample stars-sample" title="Starry Night Pattern">
-                              <span>✦</span><span>★</span><span>✦</span>
-                              <span>★</span><span>✦</span><span>★</span>
-                            </div>
-                          )}
-                          {selectedDesignId === 'classic_cream' && (
-                            <div className="pattern-detail-sample cream-sample" title="Classic Cream Warm Grain">
-                              <span className="sample-grain-label">WARM CREAM</span>
-                            </div>
-                          )}
-                          {selectedDesignId === 'solid_colors' && (
-                            <div className="pattern-detail-sample solid-sample" title="Solid Color Emulsion">
-                              <span
-                                className="sample-solid-label"
-                                style={{
-                                  color: SOLID_COLOR_PALETTE.find((c) => c.id === selectedSolidColorId)?.isDark ? '#ffffff' : '#141414'
-                                }}
-                              >
-                                {SOLID_COLOR_PALETTE.find((c) => c.id === selectedSolidColorId)?.name.toUpperCase()}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                        <span className="pattern-detail-caption">PATTERN DETAIL</span>
-                      </div>
-
                       <div className="mini-preview-info">
                         <div className="preview-info-badge">
                           <span className="info-dot"></span>
-                          <span>LIVE PREVIEW</span>
+                          <span>LIVE PREVIEW — {(selectedDesignId === 'solid_colors'
+                            ? `SOLID ${SOLID_COLOR_PALETTE.find((c) => c.id === selectedSolidColorId)?.name || 'CUSTOM'}`
+                            : STRIP_DESIGNS.find((d) => d.id === selectedDesignId)?.name || 'CLASSIC CREAM').toUpperCase()}</span>
                         </div>
                         <h5 className="preview-design-name">
-                          {selectedDesignId === 'solid_colors'
-                            ? `Solid: ${SOLID_COLOR_PALETTE.find((c) => c.id === selectedSolidColorId)?.name}`
-                            : STRIP_DESIGNS.find((d) => d.id === selectedDesignId)?.name}
+                          {(selectedDesignId === 'solid_colors'
+                            ? `SOLID ${SOLID_COLOR_PALETTE.find((c) => c.id === selectedSolidColorId)?.name || 'CUSTOM'}`
+                            : STRIP_DESIGNS.find((d) => d.id === selectedDesignId)?.name || 'CLASSIC CREAM').toUpperCase()}
                         </h5>
-                        <p className="preview-design-desc">
-                          {selectedDesignId === 'solid_colors'
-                            ? `Solid ${SOLID_COLOR_PALETTE.find((c) => c.id === selectedSolidColorId)?.name} paper with matched contrast frame & text.`
-                            : STRIP_DESIGNS.find((d) => d.id === selectedDesignId)?.description}
-                        </p>
-                        <span className="preview-format-spec">
-                          Format: <strong>{STRIP_WIDTH_PRESETS[selectedWidthId]?.name}</strong> ({STRIP_WIDTH_PRESETS[selectedWidthId]?.sub})
-                        </span>
                       </div>
                     </div>
 
@@ -839,7 +749,7 @@ export default function BoothInterior({
                       <span>YOUR STRIP IS READY – COLLECT IT</span>
                       <span className="collect-sparkle">✦</span>
                     </div>
-                    <p className="collect-sub-hint">Click or pull the strip from the collection tray below</p>
+                    <p className="collect-sub-hint">CLICK ON THE STRIP TO COLLECT IT.</p>
                   </div>
                 )}
               </div>
@@ -969,13 +879,6 @@ export default function BoothInterior({
                         >
                           Try Again
                         </button>
-                        <button
-                          type="button"
-                          className="fallback-btn secondary"
-                          onClick={enableMockMode}
-                        >
-                          Use Test Mode
-                        </button>
                       </div>
                     </div>
                   )}
@@ -996,7 +899,7 @@ export default function BoothInterior({
                           <span className="mode-modal-step-tag">STEP 2 OF 2</span>
                           <h3 className="mode-modal-title">CHOOSE CAPTURE MODE</h3>
                           <p className="mode-modal-sub">
-                            Selected Filter: <strong>{activeFilter.name}</strong> • Choose how your 4 poses are captured
+                            <strong>{activeFilter.name}</strong>
                           </p>
                         </div>
 
@@ -1017,7 +920,7 @@ export default function BoothInterior({
                                 <span className="mode-choice-badge classic">RETRO PRINT</span>
                               </div>
                               <p className="mode-choice-desc">
-                                Classic four-photo vintage strip. Crisp high-resolution photographs ready for instant printing and downloads.
+                                Classic four-photo vintage strip.
                               </p>
                               <span className="mode-choice-action">START STILL STRIP ▶</span>
                             </div>
@@ -1038,7 +941,7 @@ export default function BoothInterior({
                                 <span className="mode-choice-badge live">APPLE STYLE</span>
                               </div>
                               <p className="mode-choice-desc">
-                                Captures 4 still photos PLUS 4 short moving moments (~2.7s around each shutter). Preserves smiles and motion!
+                                Captures 4 still photos PLUS 4 short moving moments.
                               </p>
                               <span className="mode-choice-action live">START LIVE STRIP ▶</span>
                             </div>
@@ -1087,16 +990,13 @@ export default function BoothInterior({
                   disabled={cameraStatus !== 'active' && cameraStatus !== 'mock'}
                   className="interior-ready-btn"
                   onClick={handleReadyClick}
-                  aria-label="Ready: start 4-shot photo sequence"
+                  aria-label="Ready"
                 >
                   <div className="ready-btn-glow-ring" aria-hidden="true"></div>
                   <div className="ready-btn-casing">
                     <div className="ready-btn-inner">
                       <span className="ready-camera-icon">📸</span>
-                      <div className="ready-btn-labels">
-                        <span className="ready-main-label">READY: START 4-SHOT STRIP</span>
-                        <span className="ready-sub-label">PRESS TO BEGIN FOUR AUTOMATED POSES</span>
-                      </div>
+                      <span className="ready-main-label">READY</span>
                       <span className="ready-btn-arrow">▶</span>
                     </div>
                   </div>
@@ -1109,7 +1009,7 @@ export default function BoothInterior({
               <div className="interior-filter-section">
                 <div className="filter-card-header">
                   <span className="filter-step-tag">STEP 1</span>
-                  <h3 className="filter-card-title">CHOOSE FILM STYLE</h3>
+                  <h3 className="filter-card-title">CHOOSE YOUR FILTER</h3>
                 </div>
 
                 <div className="filter-cards-row" role="radiogroup" aria-label="Film Filters">
