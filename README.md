@@ -1,4 +1,4 @@
-#Vintage Booth# 📸
+Vintage Booth 📸
 
 A retro-inspired virtual photo booth that brings the charm of classic photo booths to your browser. Capture moments, customize photo strips, and save your memories.
 
