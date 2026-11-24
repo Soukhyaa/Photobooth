@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:match*",
+      "destination": "https://vintage-booth-api.onrender.com/api/:match*"
+    }
+  ]
+}
